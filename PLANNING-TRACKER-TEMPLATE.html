@@ -1,0 +1,1920 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Planning Tracker — Continuous Update Backlog</title>
+<style>
+  :root {
+    --bg: #f7f7f8;
+    --panel: #ffffff;
+    --border: #e5e7eb;
+    --border-soft: #f3f4f6;
+    --text: #1f2937;
+    --text-secondary: #6b7280;
+    --text-tertiary: #9ca3af;
+    --info-bg: #dbeafe; --info-fg: #1e40af; --info-border: #93c5fd;
+    --warning-bg: #fef3c7; --warning-fg: #92400e; --warning-border: #fcd34d;
+    --success-bg: #dcfce7; --success-fg: #166534; --success-border: #86efac;
+    --danger-bg: #fee2e2; --danger-fg: #991b1b; --danger-border: #fca5a5;
+    --purple-bg: #ede9fe; --purple-fg: #5b21b6; --purple-border: #c4b5fd;
+    --gray-bg: #f3f4f6; --gray-fg: #4b5563;
+    --edit-bg: #fffbeb; --edit-border: #fbbf24;
+  }
+  * { box-sizing: border-box; }
+  body {
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+    background: var(--bg); color: var(--text);
+    margin: 0 auto; padding: 24px; max-width: 1100px;
+    line-height: 1.5;
+  }
+  h1 { margin: 0 0 4px 0; font-size: 22px; font-weight: 600; }
+  .meta { color: var(--text-secondary); font-size: 13px; margin-bottom: 18px; }
+  .meta b { color: var(--text); font-weight: 600; }
+  code { background: var(--gray-bg); padding: 1px 6px; border-radius: 4px; font-family: ui-monospace, 'SF Mono', monospace; font-size: 12px; }
+
+  /* Top toolbar */
+  .topbar { display: flex; gap: 10px; align-items: center; margin-bottom: 14px; flex-wrap: wrap; }
+  .btn-primary {
+    background: var(--info-bg); color: var(--info-fg);
+    border: 1px solid var(--info-border); border-radius: 8px;
+    padding: 8px 14px; font-size: 13px; font-weight: 500;
+    cursor: pointer; display: inline-flex; align-items: center; gap: 6px;
+    transition: background 0.12s;
+  }
+  .btn-primary:hover { background: #c4d8f8; }
+  .btn-secondary {
+    background: var(--panel); color: var(--text);
+    border: 1px solid var(--border); border-radius: 8px;
+    padding: 8px 14px; font-size: 13px; font-weight: 500;
+    cursor: pointer;
+  }
+  .btn-secondary:hover { background: var(--gray-bg); }
+  .btn-icon {
+    background: var(--panel); color: var(--text-secondary);
+    border: 1px solid var(--border); border-radius: 8px;
+    padding: 8px 10px; font-size: 13px; cursor: pointer;
+    display: inline-flex; align-items: center; justify-content: center;
+  }
+  .btn-icon:hover { background: var(--gray-bg); }
+  .search-input {
+    flex: 1; min-width: 220px; height: 36px;
+    padding: 0 12px; border: 1px solid var(--border); border-radius: 8px;
+    font-size: 13px; outline: none; background: var(--panel); font-family: inherit;
+  }
+  .search-input:focus { border-color: #3b82f6; box-shadow: 0 0 0 3px #dbeafe; }
+  .save-status {
+    font-size: 11.5px; color: var(--text-secondary);
+    padding: 5px 12px; border-radius: 999px; background: var(--gray-bg);
+  }
+  .save-status.saving { background: var(--warning-bg); color: var(--warning-fg); }
+  .save-status.saved  { background: var(--success-bg); color: var(--success-fg); }
+  .save-status.error  { background: var(--danger-bg); color: var(--danger-fg); }
+
+  /* JSONbin setup panel */
+  .setup-panel {
+    background: var(--info-bg);
+    border: 1px solid var(--info-border);
+    border-radius: 12px;
+    padding: 14px 18px;
+    margin-bottom: 14px;
+  }
+  .setup-header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 6px; }
+  .setup-header h3 { margin: 0; font-size: 14px; color: var(--info-fg); font-weight: 600; }
+  .setup-close { background: none; border: 0; font-size: 20px; cursor: pointer; color: var(--info-fg); padding: 0 4px; line-height: 1; }
+  .setup-close:hover { opacity: 0.7; }
+  .setup-intro { font-size: 12.5px; color: var(--info-fg); margin: 0 0 8px; line-height: 1.5; }
+  .setup-intro a { color: var(--info-fg); text-decoration: underline; }
+  .setup-steps { margin: 0 0 12px 18px; font-size: 12px; color: var(--info-fg); line-height: 1.6; }
+  .setup-steps a { color: var(--info-fg); text-decoration: underline; }
+  .setup-steps b { font-weight: 600; }
+  .setup-fields { display: flex; flex-direction: column; gap: 4px; }
+  .setup-fields label { font-size: 11px; font-weight: 600; color: var(--info-fg); margin-top: 6px; text-transform: uppercase; letter-spacing: 0.4px; }
+  .setup-optional { font-weight: 400; text-transform: none; letter-spacing: 0; opacity: 0.75; }
+  .setup-fields input { padding: 7px 10px; border: 1px solid var(--info-border); border-radius: 6px; font-size: 13px; font-family: inherit; background: var(--panel); }
+  .setup-fields input:focus { outline: none; box-shadow: 0 0 0 3px rgba(30,64,175,0.18); }
+  .setup-actions { display: flex; gap: 8px; margin-top: 10px; align-items: center; flex-wrap: wrap; }
+  .setup-disconnect { margin-left: auto; font-size: 11.5px; color: var(--danger-fg); border-color: var(--danger-border); padding: 6px 10px; }
+  .setup-disconnect:hover { background: var(--danger-bg); }
+  .setup-status { font-size: 12px; margin-top: 8px; min-height: 16px; }
+  .setup-status.error { color: var(--danger-fg); }
+  .setup-status.success { color: var(--success-fg); }
+
+  /* Stage strip — kanban column headers showing the four sequential stages */
+  .stage-strip {
+    display: grid;
+    align-items: stretch;
+    margin-bottom: 14px;
+  }
+  .stage-card {
+    background: var(--panel);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    padding: 10px 14px;
+    cursor: pointer;
+    transition: transform 0.12s, box-shadow 0.12s;
+    font-family: inherit;
+    font-size: inherit;
+    color: inherit;
+    text-align: left;
+    width: 100%;
+    appearance: none;
+    -webkit-appearance: none;
+    line-height: 1.5;
+  }
+  .stage-card:hover { box-shadow: 0 1px 3px rgba(0,0,0,0.08); }
+  .stage-card-row { display: flex; justify-content: space-between; align-items: baseline; margin-bottom: 2px; }
+  .stage-card-name { font-size: 12.5px; color: var(--text-secondary); font-weight: 500; }
+  .stage-card-count { font-size: 17px; font-weight: 600; }
+  .stage-card-sub { font-size: 10.5px; color: var(--text-tertiary); text-transform: uppercase; letter-spacing: 0.4px; }
+
+  /* Stage-specific colored top + count color */
+  .stage-card.stage-outstanding { border-top: 4px solid var(--warning-fg); }
+  .stage-card.stage-current     { border-top: 4px solid var(--info-fg); }
+  .stage-card.stage-qa          { border-top: 4px solid var(--purple-fg); }
+  .stage-card.stage-verified    { border-top: 4px solid var(--success-fg); }
+  .stage-card.stage-outstanding .stage-card-count { color: var(--warning-fg); }
+  .stage-card.stage-current     .stage-card-count { color: var(--info-fg); }
+  .stage-card.stage-qa          .stage-card-count { color: var(--purple-fg); }
+  .stage-card.stage-verified    .stage-card-count { color: var(--success-fg); }
+
+  /* Active state — lifted, filled with stage color, bold labels */
+  .stage-card.active { transform: translateY(-2px); }
+  .stage-card.active .stage-card-name { font-weight: 600; }
+  .stage-card.active .stage-card-sub  { font-weight: 600; }
+  .stage-card.stage-outstanding.active {
+    background: #fffbeb;
+    border: 1px solid var(--warning-fg);
+    border-top: 4px solid var(--warning-fg);
+    box-shadow: 0 2px 8px rgba(146, 64, 14, 0.18);
+  }
+  .stage-card.stage-outstanding.active .stage-card-name,
+  .stage-card.stage-outstanding.active .stage-card-sub { color: var(--warning-fg); }
+  .stage-card.stage-current.active {
+    background: var(--info-bg);
+    border: 1px solid var(--info-fg);
+    border-top: 4px solid var(--info-fg);
+    box-shadow: 0 2px 8px rgba(30, 64, 175, 0.18);
+  }
+  .stage-card.stage-current.active .stage-card-name,
+  .stage-card.stage-current.active .stage-card-sub { color: var(--info-fg); }
+  .stage-card.stage-qa.active {
+    background: var(--purple-bg);
+    border: 1px solid var(--purple-fg);
+    border-top: 4px solid var(--purple-fg);
+    box-shadow: 0 2px 8px rgba(91, 33, 182, 0.18);
+  }
+  .stage-card.stage-qa.active .stage-card-name,
+  .stage-card.stage-qa.active .stage-card-sub { color: var(--purple-fg); }
+  .stage-card.stage-verified.active {
+    background: var(--success-bg);
+    border: 1px solid var(--success-fg);
+    border-top: 4px solid var(--success-fg);
+    box-shadow: 0 2px 8px rgba(22, 101, 52, 0.18);
+  }
+  .stage-card.stage-verified.active .stage-card-name,
+  .stage-card.stage-verified.active .stage-card-sub { color: var(--success-fg); }
+
+  .stage-chevron {
+    display: flex; align-items: center; justify-content: center;
+    color: var(--text-tertiary); padding: 0 6px; padding-top: 10px;
+  }
+
+  /* More filters */
+  .more-filters-row { display: flex; gap: 10px; align-items: center; margin-bottom: 14px; font-size: 12.5px; color: var(--text-secondary); flex-wrap: wrap; }
+  .more-filters-toggle { background: none; border: 0; cursor: pointer; padding: 4px 6px; font-size: 13px; font-weight: 500; color: var(--info-fg); font-family: inherit; }
+  .more-filters-toggle:hover { text-decoration: underline; }
+  .filter-summary { color: var(--text-tertiary); font-style: italic; }
+  .clear-filters { background: none; border: 0; padding: 4px 6px; font-size: 12px; color: var(--text-secondary); cursor: pointer; text-decoration: underline; font-family: inherit; }
+  .clear-filters:hover { color: var(--danger-fg); }
+
+  .filter-drawer {
+    display: none; background: var(--panel); border: 1px solid var(--border);
+    border-radius: 12px; padding: 14px 16px; margin-bottom: 14px;
+  }
+  .filter-drawer.open { display: block; }
+  .filter-group { margin-bottom: 12px; }
+  .filter-group:last-child { margin-bottom: 0; }
+  .filter-group-label { font-size: 10.5px; font-weight: 600; color: var(--text-secondary); text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: 6px; }
+  .chip-row { display: flex; gap: 6px; flex-wrap: wrap; }
+  .chip {
+    padding: 4px 11px; border-radius: 999px;
+    background: var(--gray-bg); border: 0;
+    font-size: 11.5px; font-weight: 500; color: var(--gray-fg);
+    cursor: pointer; user-select: none;
+    font-family: inherit; transition: background 0.12s;
+  }
+  .chip:hover { background: #e5e7eb; }
+  .chip.active { background: var(--info-bg); color: var(--info-fg); }
+
+  .summary-strip { font-size: 12.5px; color: var(--text-secondary); margin-bottom: 12px; }
+  .summary-strip b { color: var(--text); font-weight: 600; }
+
+  /* Item panels */
+  .items-list { display: flex; flex-direction: column; gap: 8px; }
+  .item-panel {
+    background: var(--panel); border: 1px solid var(--border);
+    border-radius: 12px; padding: 14px 16px;
+    display: grid; grid-template-columns: 26px 1fr auto; gap: 14px;
+    align-items: flex-start;
+  }
+  .item-panel.is-new { border: 2px solid var(--info-border); }
+  .item-panel.editing { background: var(--edit-bg); border: 1px solid var(--edit-border); }
+  .item-panel.pending-review { background: #fdf2f8; border: 2px solid #f9a8d4; }
+  .item-panel.verified-locked { opacity: 0.94; }
+  .new-badge-inline {
+    background: var(--info-bg); color: var(--info-fg);
+    padding: 2px 8px; border-radius: 999px;
+    font-size: 9.5px; font-weight: 600;
+    letter-spacing: 0.4px; text-transform: uppercase;
+  }
+  .pending-badge {
+    background: #be185d; color: #fff;
+    padding: 2px 9px; border-radius: 999px;
+    font-size: 9.5px; font-weight: 600;
+    letter-spacing: 0.4px; text-transform: uppercase;
+    display: inline-flex; align-items: center; gap: 4px;
+  }
+  .pending-badge .clear-x {
+    cursor: pointer; opacity: 0.85; padding: 0 2px;
+    display: inline-flex; align-items: center;
+  }
+  .pending-badge .clear-x:hover { opacity: 1; }
+  .verified-badge {
+    background: var(--success-bg); color: var(--success-fg);
+    padding: 2px 9px; border-radius: 999px;
+    font-size: 9.5px; font-weight: 600;
+    letter-spacing: 0.4px; text-transform: uppercase;
+    display: inline-flex; align-items: center; gap: 4px;
+  }
+  .title-placeholder { color: var(--text-tertiary); font-style: italic; font-weight: 400; }
+
+  /* Locked field states (QA, Verified) */
+  .live-pill.locked,
+  .live-where-control.locked {
+    cursor: default;
+  }
+  .live-pill.locked:hover,
+  .live-where-control.locked:hover {
+    background: inherit;
+    box-shadow: none;
+  }
+  .item-title.locked { cursor: default; }
+  .item-title.locked:hover { background: transparent; padding: 1px 4px; margin: -1px -4px; }
+  .item-star.locked { cursor: default; transform: none !important; }
+  .lock-mark { opacity: 0.55; margin-left: 3px; display: inline-flex; align-items: center; }
+
+  /* Pending-review state inside the card */
+  .body-block.user.edited-in-qa {
+    background: #fce7f3;
+    border-left-color: #be185d;
+    color: #831843;
+  }
+  .body-block.user.edited-in-qa .block-label { color: #831843; }
+  .body-block.claude.stale { opacity: 0.7; }
+  .stale-tag {
+    font-size: 9.5px; opacity: 0.75;
+    text-transform: none; letter-spacing: 0;
+    font-weight: 400; font-style: italic;
+    margin-left: 4px;
+  }
+
+  /* Approve button — used in QA active state */
+  .approve-btn {
+    display: inline-flex; align-items: center; gap: 5px;
+    padding: 5px 10px;
+    background: var(--success-bg); color: var(--success-fg);
+    border: 1px solid var(--success-border); border-radius: 8px;
+    font-size: 12px; font-weight: 600;
+    cursor: pointer; font-family: inherit;
+    transition: background 0.12s;
+  }
+  .approve-btn:hover { background: #bbf7d0; }
+  .approve-btn svg { display: block; }
+
+  .send-back-btn {
+    display: inline-flex; align-items: center; gap: 5px;
+    padding: 5px 10px;
+    background: var(--info-bg); color: var(--info-fg);
+    border: 1px solid var(--info-border); border-radius: 8px;
+    font-size: 12px; font-weight: 600;
+    cursor: pointer; font-family: inherit;
+    transition: background 0.12s;
+  }
+  .send-back-btn:hover { background: #c4d8f8; }
+  .send-back-btn svg { display: block; }
+
+  .qa-failed-badge {
+    background: var(--danger-bg); color: var(--danger-fg);
+    padding: 2px 9px; border-radius: 999px;
+    font-size: 9.5px; font-weight: 600;
+    letter-spacing: 0.4px; text-transform: uppercase;
+    display: inline-flex; align-items: center; gap: 4px;
+  }
+
+  /* Current Sprint sub-states */
+  .item-panel.awaiting-user-review {
+    border-left: 4px solid var(--info-fg);
+    border-radius: 4px 12px 12px 4px;
+  }
+  .item-panel.approved-for-build {
+    border-left: 4px solid var(--success-fg);
+    border-radius: 4px 12px 12px 4px;
+  }
+  .item-panel.sprint-locked {
+    background: #fafaf9;
+    border: 1px solid #d6d3d1;
+    opacity: 0.92;
+  }
+  .awaiting-badge {
+    background: var(--info-bg); color: var(--info-fg);
+    padding: 2px 9px; border-radius: 999px;
+    font-size: 9.5px; font-weight: 600;
+    letter-spacing: 0.4px; text-transform: uppercase;
+    display: inline-flex; align-items: center; gap: 4px;
+  }
+  .approved-badge {
+    background: var(--success-bg); color: var(--success-fg);
+    padding: 2px 9px; border-radius: 999px;
+    font-size: 9.5px; font-weight: 600;
+    letter-spacing: 0.4px; text-transform: uppercase;
+    display: inline-flex; align-items: center; gap: 4px;
+  }
+  .sprint-locked-badge {
+    background: #e7e5e4; color: #44403c;
+    padding: 2px 9px; border-radius: 999px;
+    font-size: 9.5px; font-weight: 600;
+    letter-spacing: 0.4px; text-transform: uppercase;
+    display: inline-flex; align-items: center; gap: 4px;
+  }
+  .unapprove-btn {
+    display: inline-flex; align-items: center; gap: 5px;
+    padding: 5px 10px;
+    background: var(--panel); color: var(--text-secondary);
+    border: 1px solid var(--border); border-radius: 8px;
+    font-size: 12px; font-weight: 500;
+    cursor: pointer; font-family: inherit;
+    transition: background 0.12s;
+  }
+  .unapprove-btn:hover { background: var(--gray-bg); }
+  .unapprove-btn svg { display: block; }
+
+  /* Auto-linkified URLs inside Your details and Claude's feedback */
+  .body-block a {
+    color: inherit;
+    text-decoration: underline;
+    text-underline-offset: 2px;
+  }
+  .body-block a:hover { opacity: 0.85; }
+
+  /* Sprint groups — collapsible bundles of items sharing a sprint number */
+  .sprint-group {
+    background: var(--panel);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    overflow: hidden;
+  }
+  .sprint-group-header {
+    display: flex; align-items: center; gap: 10px;
+    padding: 10px 14px;
+    background: #fafaf9;
+    border-bottom: 1px solid var(--border);
+    cursor: pointer; user-select: none;
+    transition: background 0.12s;
+  }
+  .sprint-group-header:hover { background: #f5f5f4; }
+  .sprint-group.collapsed .sprint-group-header { border-bottom: 0; }
+  .sprint-group-chev {
+    display: inline-flex; align-items: center;
+    color: var(--text-secondary);
+  }
+  .sprint-group-name {
+    font-size: 13.5px; font-weight: 600; color: var(--text);
+  }
+  .sprint-group-edit {
+    background: transparent; border: 0; cursor: pointer;
+    color: var(--text-tertiary);
+    padding: 2px 4px; border-radius: 4px;
+    display: inline-flex; align-items: center;
+    font-family: inherit;
+  }
+  .sprint-group-edit:hover { background: var(--gray-bg); color: var(--text); }
+  .sprint-group-count {
+    margin-left: auto;
+    font-size: 11.5px; color: var(--text-secondary);
+    background: var(--gray-bg);
+    padding: 2px 9px; border-radius: 999px;
+    font-weight: 500;
+  }
+  .sprint-group-body {
+    padding: 8px; display: flex; flex-direction: column; gap: 8px;
+  }
+  .sprint-group.collapsed .sprint-group-body { display: none; }
+  .cs-bar-ready { color: var(--success-fg); font-weight: 600; }
+
+  /* Complete Sprint bar — sits above the items list when on Current Sprint tab */
+  .complete-sprint-bar {
+    background: var(--panel); border: 1px solid var(--border);
+    border-radius: 10px; padding: 10px 14px;
+    display: flex; align-items: center; gap: 10px; flex-wrap: wrap;
+    margin-bottom: 8px;
+  }
+  .cs-bar-info { flex: 1; min-width: 200px; }
+  .cs-bar-title { font-size: 13px; font-weight: 600; color: var(--text); }
+  .cs-bar-sub { font-size: 11.5px; color: var(--text-secondary); margin-top: 2px; }
+  .cs-bar-sub.ready { color: var(--success-fg); }
+  .complete-sprint-btn {
+    display: inline-flex; align-items: center; gap: 6px;
+    padding: 8px 14px;
+    background: var(--text); color: var(--panel);
+    border: 0; border-radius: 8px;
+    font-size: 13px; font-weight: 600;
+    cursor: pointer; font-family: inherit;
+  }
+  .complete-sprint-btn:hover { background: #111827; }
+  .complete-sprint-btn.disabled {
+    background: var(--gray-bg); color: var(--text-tertiary);
+    cursor: not-allowed;
+  }
+  .complete-sprint-btn.disabled:hover { background: var(--gray-bg); }
+  .complete-sprint-btn svg { display: block; }
+
+  .item-star { font-size: 20px; line-height: 1; user-select: none; margin-top: 2px; text-align: center; }
+  .item-star.on { color: #d97706; }
+  .item-star.off { color: #d1d5db; }
+  .item-star.clickable { cursor: pointer; transition: transform 0.1s; }
+  .item-star.clickable:hover { transform: scale(1.15); }
+
+  .panel-content { min-width: 0; }
+  .panel-header { display: flex; align-items: center; gap: 8px; margin-bottom: 6px; flex-wrap: wrap; }
+  .item-id { font-size: 11px; color: var(--text-tertiary); font-weight: 500; }
+  .item-title { font-size: 14.5px; font-weight: 500; color: var(--text); }
+
+  .panel-badges { display: flex; align-items: center; gap: 6px; margin-bottom: 10px; flex-wrap: wrap; }
+  .badge { padding: 2px 10px; border-radius: 999px; font-size: 11px; font-weight: 500; display: inline-block; }
+  .badge.type-bug      { background: var(--danger-bg);  color: var(--danger-fg); }
+  .badge.type-feature  { background: var(--info-bg);    color: var(--info-fg); }
+  .badge.type-polish   { background: var(--warning-bg); color: var(--warning-fg); }
+  .badge.type-refactor { background: var(--gray-bg);    color: var(--gray-fg); }
+  .badge.role          { background: var(--purple-bg);  color: var(--purple-fg); font-weight: 500; }
+  .where-text { font-size: 12px; color: var(--text-secondary); margin-left: 2px; }
+
+  /* Always-live inline controls — clickable pills with hidden native select underneath */
+  .live-pill {
+    position: relative; display: inline-flex; align-items: center; gap: 4px;
+    padding: 2px 10px; border-radius: 999px;
+    font-size: 11px; font-weight: 500;
+    cursor: pointer; user-select: none;
+    background: var(--gray-bg); color: var(--gray-fg);
+  }
+  .live-pill.open { box-shadow: 0 0 0 2px var(--info-border); }
+  .live-pill.empty {
+    background: transparent; color: var(--text-tertiary);
+    border: 1px dashed var(--border);
+    padding: 1px 9px;
+  }
+  /* Type pill colors */
+  .live-pill.live-type-bug      { background: var(--danger-bg);  color: var(--danger-fg); }
+  .live-pill.live-type-feature  { background: var(--info-bg);    color: var(--info-fg); }
+  .live-pill.live-type-polish   { background: var(--warning-bg); color: var(--warning-fg); }
+  .live-pill.live-type-refactor { background: var(--gray-bg);    color: var(--gray-fg); }
+  /* Status pill colors */
+  .live-pill.live-st-outstanding { background: var(--warning-bg); color: var(--warning-fg); }
+  .live-pill.live-st-current     { background: var(--info-bg);    color: var(--info-fg); }
+  .live-pill.live-st-qa          { background: var(--purple-bg);  color: var(--purple-fg); }
+  .live-pill.live-st-verified    { background: var(--success-bg); color: var(--success-fg); }
+
+  /* Toggleable role pills (multi-select) */
+  .live-role-pill {
+    display: inline-flex; align-items: center; gap: 4px;
+    padding: 2px 10px; border-radius: 999px;
+    font-size: 11px; font-weight: 500;
+    cursor: pointer; user-select: none;
+  }
+  .live-role-pill.on  { background: var(--purple-bg); color: var(--purple-fg); }
+  .live-role-pill.off {
+    background: transparent; color: var(--text-tertiary);
+    border: 1px dashed var(--border); padding: 1px 9px;
+  }
+
+  /* Page / Feature live controls (text styled with chevron, native select underneath) */
+  .live-where-control {
+    position: relative; display: inline-flex; align-items: center; gap: 4px;
+    font-size: 12px; color: var(--text-secondary);
+    cursor: pointer; padding: 2px 6px; margin: -2px -2px; border-radius: 4px;
+  }
+  .live-where-control:hover { background: var(--gray-bg); }
+  .live-where-control.italic { font-style: italic; }
+  .live-where-control.empty { color: var(--text-tertiary); }
+  .live-where-control.open { background: var(--gray-bg); box-shadow: 0 0 0 2px var(--info-border); }
+  .where-sep { color: var(--text-tertiary); font-size: 12px; }
+
+  /* Popover panel — replaces native select dropdowns */
+  .field-popover {
+    position: absolute;
+    top: calc(100% + 6px);
+    left: 0;
+    z-index: 100;
+    background: var(--panel);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    box-shadow: 0 8px 24px rgba(0,0,0,0.12);
+    min-width: 220px;
+    max-width: 320px;
+    padding: 4px;
+    cursor: default;
+    text-transform: none;
+    letter-spacing: 0;
+    font-weight: 400;
+  }
+  .popover-header {
+    font-size: 9.5px; font-weight: 600;
+    color: var(--text-tertiary);
+    text-transform: uppercase; letter-spacing: 0.4px;
+    padding: 6px 10px 4px;
+  }
+  .popover-option {
+    display: flex; align-items: center; gap: 10px;
+    padding: 7px 10px;
+    border-radius: 6px;
+    cursor: pointer;
+    font-size: 12.5px;
+    color: var(--text);
+    font-weight: 400;
+  }
+  .popover-option:hover { background: var(--gray-bg); }
+  .popover-option.active { background: var(--gray-bg); font-weight: 500; }
+  .popover-option-label { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .popover-option-count { font-size: 11px; color: var(--text-tertiary); }
+  .popover-check { color: var(--text-secondary); display: inline-flex; }
+  .popover-option-dot { width: 10px; height: 10px; border-radius: 50%; flex-shrink: 0; }
+  .popover-option-dot.outstanding { background: var(--warning-fg); }
+  .popover-option-dot.current     { background: var(--info-fg); }
+  .popover-option-dot.qa          { background: var(--purple-fg); }
+  .popover-option-dot.verified    { background: var(--success-fg); }
+  .popover-divider { height: 1px; background: var(--border); margin: 4px 6px; }
+  .popover-clear { color: var(--text-tertiary); }
+  .popover-search {
+    padding: 4px 8px;
+    border-bottom: 1px solid var(--border);
+    display: flex; align-items: center; gap: 6px;
+  }
+  .popover-search input {
+    border: 0; outline: 0;
+    font-size: 12.5px; font-family: inherit;
+    flex: 1; height: 26px; background: transparent;
+    padding: 0; color: var(--text);
+  }
+  .popover-list { padding: 4px; max-height: 220px; overflow-y: auto; }
+  .popover-empty { padding: 12px 10px; color: var(--text-tertiary); font-size: 12px; font-style: italic; text-align: center; }
+  .popover-footer {
+    border-top: 1px solid var(--border);
+    padding: 6px 10px;
+    font-size: 11px; color: var(--text-tertiary);
+  }
+  .popover-add-feature {
+    border-top: 1px solid var(--border);
+    padding: 4px 8px;
+    display: flex; align-items: center; gap: 6px;
+  }
+  .popover-add-feature input {
+    border: 0; outline: 0;
+    font-size: 12.5px; font-family: inherit;
+    flex: 1; height: 26px; background: transparent;
+    padding: 0; color: var(--text);
+  }
+
+  .panel-body { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin-top: 4px; }
+  @media (max-width: 720px) { .panel-body { grid-template-columns: 1fr; } }
+  .body-block {
+    padding: 9px 12px; border-radius: 8px;
+    font-size: 12.5px; line-height: 1.55;
+  }
+  .body-block.user   { background: #fffbeb; border-left: 3px solid #d97706; color: #78350f; }
+  .body-block.claude { background: #eff6ff; border-left: 3px solid #2563eb; color: #1e3a8a; }
+  .body-block .block-label { font-size: 9.5px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.4px; display: block; margin-bottom: 4px; }
+  .body-block.user .block-label   { color: #92400e; }
+  .body-block.claude .block-label { color: #1d4ed8; }
+  .body-block .block-content {
+    display: block;
+    white-space: pre-wrap; word-wrap: break-word;
+  }
+  .body-block .empty { color: #c7d2db; font-style: italic; }
+
+  /* Inline edit affordances */
+  .inline-editable { cursor: text; transition: background 0.1s; border-radius: 4px; }
+  .item-title.inline-editable { padding: 1px 4px; margin: -1px -4px; }
+  .item-title.inline-editable:hover { background: rgba(0,0,0,0.04); }
+  .block-content.inline-editable { padding: 2px 4px; margin: -2px -4px; }
+  .block-content.inline-editable:hover { background: rgba(0,0,0,0.04); }
+
+  .inline-edit-input {
+    width: 100%; padding: 5px 8px;
+    border: 1px solid var(--info-border); border-radius: 6px;
+    font-family: inherit; font-size: inherit; font-weight: inherit; color: inherit;
+    background: var(--panel); outline: none;
+    box-shadow: 0 0 0 3px var(--info-bg);
+  }
+  .inline-edit-input.multiline { min-height: 60px; resize: vertical; line-height: 1.55; }
+
+  .panel-actions { display: flex; gap: 4px; }
+  .icon-btn {
+    width: 32px; height: 32px; padding: 0;
+    display: inline-flex; align-items: center; justify-content: center;
+    background: var(--panel); border: 1px solid var(--border); border-radius: 8px;
+    color: var(--text-secondary); cursor: pointer; transition: all 0.12s;
+  }
+  .icon-btn:hover { background: var(--gray-bg); color: var(--text); }
+  .icon-btn.del:hover     { background: var(--danger-bg);  color: var(--danger-fg);  border-color: var(--danger-border); }
+  .icon-btn.promote:hover { background: var(--info-bg);    color: var(--info-fg);    border-color: var(--info-border); }
+  .icon-btn.demote:hover  { background: var(--warning-bg); color: var(--warning-fg); border-color: var(--warning-border); }
+  .icon-btn.save:hover    { background: var(--success-bg); color: var(--success-fg); border-color: var(--success-border); }
+  .icon-btn svg { display: block; }
+
+  /* Edit form */
+  .edit-header { display: flex; align-items: center; gap: 10px; margin-bottom: 14px; flex-wrap: wrap; }
+  .edit-header .new-badge {
+    background: var(--warning-bg); color: var(--warning-fg);
+    padding: 2px 10px; border-radius: 999px;
+    font-size: 10px; font-weight: 600; letter-spacing: 0.4px; text-transform: uppercase;
+  }
+  .edit-header .editing-id {
+    background: var(--info-bg); color: var(--info-fg);
+    padding: 2px 10px; border-radius: 999px;
+    font-size: 10px; font-weight: 600; letter-spacing: 0.4px; text-transform: uppercase;
+  }
+  .edit-hint { font-size: 11.5px; color: var(--text-secondary); }
+  .edit-actions { margin-left: auto; display: flex; gap: 4px; }
+
+  .edit-form { display: grid; gap: 12px; }
+  .edit-form .field label.field-label {
+    font-size: 10.5px; color: var(--text-secondary);
+    font-weight: 600; display: block; margin-bottom: 5px;
+    text-transform: uppercase; letter-spacing: 0.4px;
+  }
+  .edit-form input[type="text"], .edit-form input[type="number"], .edit-form textarea, .edit-form select {
+    width: 100%; padding: 7px 10px;
+    border: 1px solid var(--border); border-radius: 8px;
+    font-size: 13px; font-family: inherit; background: var(--panel); outline: none;
+  }
+  .edit-form textarea { min-height: 72px; resize: vertical; line-height: 1.5; }
+  .edit-form input:focus, .edit-form textarea:focus, .edit-form select:focus {
+    border-color: #3b82f6; box-shadow: 0 0 0 3px #dbeafe;
+  }
+  .edit-form .two-col { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+  @media (max-width: 600px) { .edit-form .two-col { grid-template-columns: 1fr; } }
+  .edit-form .role-pills { display: flex; gap: 6px; align-items: center; }
+  .edit-form .pill {
+    padding: 6px 14px; border-radius: 999px;
+    font-size: 12px; font-weight: 500;
+    background: var(--gray-bg); color: var(--gray-fg);
+    cursor: pointer; user-select: none; border: 0;
+    font-family: inherit; transition: all 0.12s;
+  }
+  .edit-form .pill.active.role { background: var(--purple-bg); color: var(--purple-fg); }
+
+  .ghost-row {
+    background: transparent; border: 1px dashed var(--border);
+    border-radius: 12px; padding: 14px 16px;
+    text-align: center; color: var(--text-secondary); font-size: 13px;
+    cursor: pointer; display: flex; align-items: center; justify-content: center; gap: 6px;
+    transition: all 0.12s;
+  }
+  .ghost-row:hover { border-color: var(--info-border); color: var(--info-fg); background: #f9fbff; }
+
+  .empty-state {
+    text-align: center; padding: 48px 20px; color: var(--text-secondary);
+    background: var(--panel); border: 1px dashed var(--border); border-radius: 12px;
+  }
+  .empty-state h3 { margin: 0 0 6px 0; font-size: 14px; color: var(--text); font-weight: 600; }
+  .empty-state p { margin: 0; font-size: 13px; }
+</style>
+</head>
+<body>
+  <h1>Planning Tracker — Continuous Update Backlog</h1>
+  <div class="meta">
+    Ongoing list of requested updates across sprints.
+    <b>You</b> add items with details. <b>Claude</b> responds with feedback / mockups.
+    Sprint planning pulls from <code>Outstanding</code> → <code>Current Sprint</code> → <code>QA</code> → <code>Verified</code>.
+    <br>To save: click ✓ on a row to commit it, then <b>Save</b> at top to write to disk. Title and details can also be edited inline by clicking them.
+  </div>
+
+  <div class="topbar">
+    <button class="btn-primary" onclick="startAddItem()">
+      <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+      Add item
+    </button>
+    <input type="text" id="search-input" class="search-input" placeholder="Search items, details, feedback..." oninput="render()">
+    <button class="btn-secondary" onclick="saveToCloud()">Save</button>
+    <button class="btn-icon" title="Reload from cloud" onclick="reloadFromBin()">
+      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="23 4 23 10 17 10"/><polyline points="1 20 1 14 7 14"/><path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10"/><path d="M20.49 15a9 9 0 0 1-14.85 3.36L1 14"/></svg>
+    </button>
+    <button class="btn-icon" title="Cloud settings" onclick="showSetupPanel()">
+      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>
+    </button>
+    <span id="save-status" class="save-status">Ready</span>
+  </div>
+
+  <div id="setup-panel" class="setup-panel" style="display: none;">
+    <div class="setup-header">
+      <h3>Connect to JSONbin cloud storage</h3>
+      <button class="setup-close" onclick="hideSetupPanel()" title="Close">×</button>
+    </div>
+    <p class="setup-intro">Save and load your tracker data through <a href="https://jsonbin.io" target="_blank">JSONbin.io</a> so it's accessible from any browser and from Claude Cowork without using the Anthropic API.</p>
+    <ol class="setup-steps">
+      <li>Sign up at <a href="https://jsonbin.io" target="_blank">jsonbin.io</a> (free).</li>
+      <li>Click your name → <b>API Keys</b> → copy the <b>X-Master-Key</b>.</li>
+      <li>Paste it below. Leave Bin ID empty on first setup — we'll create one for you.</li>
+    </ol>
+    <div class="setup-fields">
+      <label for="setup-api-key">X-Master-Key</label>
+      <input type="password" id="setup-api-key" placeholder="$2a$10$...">
+      <label for="setup-bin-id">Bin ID <span class="setup-optional">(optional — leave empty to create new)</span></label>
+      <input type="text" id="setup-bin-id" placeholder="e.g., 6543abc123def">
+      <div class="setup-actions">
+        <button class="btn-primary" onclick="connectBin()">Connect</button>
+        <button class="btn-secondary" onclick="hideSetupPanel()">Cancel</button>
+        <button class="btn-icon setup-disconnect" onclick="disconnectBin()" title="Disconnect from current bin">Disconnect</button>
+      </div>
+      <div id="setup-status" class="setup-status"></div>
+    </div>
+  </div>
+
+  <div class="stage-strip" id="status-tabs"></div>
+
+  <div class="more-filters-row">
+    <button class="more-filters-toggle" onclick="toggleMoreFilters()">
+      <span id="more-arrow">▸</span> More filters
+    </button>
+    <span class="filter-summary" id="filter-summary"></span>
+    <button class="clear-filters" onclick="clearFilters()" id="clear-filters-btn" style="display:none;">Clear all</button>
+  </div>
+
+  <div class="filter-drawer" id="filter-drawer">
+    <div class="filter-group"><div class="filter-group-label">Role</div><div id="filter-roles" class="chip-row"></div></div>
+    <div class="filter-group"><div class="filter-group-label">Page</div><div id="filter-pages" class="chip-row"></div></div>
+    <div class="filter-group"><div class="filter-group-label">Feature</div><div id="filter-features" class="chip-row"></div></div>
+    <div class="filter-group"><div class="filter-group-label">Type</div><div id="filter-types" class="chip-row"></div></div>
+    <div class="filter-group"><div class="filter-group-label">Priority</div><div id="filter-pri" class="chip-row"></div></div>
+  </div>
+
+  <div class="summary-strip" id="summary-strip"></div>
+
+  <div class="items-list" id="items-list"></div>
+
+  <script id="tracker-data" type="application/json">
+{
+  "config": {
+    "roles": [],
+    "pages": [],
+    "features": [],
+    "types": ["Bug", "Feature", "Polish", "Refactor"],
+    "priorities": ["Yes", "No"],
+    "statuses": ["Outstanding", "Current Sprint", "QA", "Verified"],
+    "nextSprintNumber": 1
+  },
+  "items": []
+}
+  </script>
+
+<script>
+  const ICONS = {
+    plus:       '<svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>',
+    x:          '<svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>',
+    check:      '<svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.75" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>',
+    pencil:     '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>',
+    trash:      '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></svg>',
+    arrowRight: '<svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.25" stroke-linecap="round" stroke-linejoin="round"><line x1="5" y1="12" x2="19" y2="12"/><polyline points="12 5 19 12 12 19"/></svg>',
+    arrowLeft:  '<svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.25" stroke-linecap="round" stroke-linejoin="round"><line x1="19" y1="12" x2="5" y2="12"/><polyline points="12 19 5 12 12 5"/></svg>',
+    chevronRight: '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="9 18 15 12 9 6"/></svg>',
+    chevronDown:  '<svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" style="opacity:0.55;"><polyline points="6 9 12 15 18 9"/></svg>',
+    copy:         '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="9" width="13" height="13" rx="2" ry="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg>',
+    smallX:       '<svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" style="opacity:0.65;"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>',
+    smallPlus:    '<svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" style="opacity:0.65;"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>',
+    checkSm:      '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>',
+    xSm:          '<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.25" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>',
+    search:       '<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>',
+    plusSm:       '<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.25" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>',
+    lockSm:       '<svg width="9" height="9" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.25" stroke-linecap="round" stroke-linejoin="round" style="opacity:0.65;"><rect x="3" y="11" width="18" height="11" rx="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>',
+    circleCheck:  '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.25" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><polyline points="9 12 11 14 15 10"/></svg>',
+    alertCircle:  '<svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.25" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>',
+    arrowBackUp:  '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.25" stroke-linecap="round" stroke-linejoin="round"><polyline points="9 14 4 9 9 4"/><path d="M4 9h11a4 4 0 0 1 4 4v7"/></svg>',
+    eye:          '<svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.25" stroke-linecap="round" stroke-linejoin="round"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>',
+    undo:         '<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.25" stroke-linecap="round" stroke-linejoin="round"><path d="M3 7v6h6"/><path d="M21 17a9 9 0 0 0-9-9 9 9 0 0 0-6 2.3L3 13"/></svg>'
+  };
+
+  const BIN_STORAGE_KEY = 'planning_tracker_bin_config';
+  const JSONBIN_BASE = 'https://api.jsonbin.io/v3/b';
+
+  // ===== DEFAULT JSONBIN CONFIG =====
+  // Three ways to provide your Bin ID + JSONbin Access Key, in priority order:
+  //
+  //   1) URL fragment (recommended for hosted deployments):
+  //      Append `#bin=<binId>&key=<accessKey>&keyType=access` to the page URL and
+  //      bookmark it. The fragment is read every load, takes top priority, and is
+  //      never sent to servers (so the key doesn't appear in server logs or
+  //      HTTP Referer headers). Lets one hosted page serve multiple apps — each
+  //      app uses its own bookmark with its own fragment.
+  //   2) Browser localStorage: set via the manual setup banner, persists per-browser.
+  //   3) DEFAULT_BIN_CONFIG below: hardcoded in this file. Useful for single-app
+  //      local deployments. Leave empty when this file is hosted publicly.
+  //
+  // Access Key vs Master Key: Master Key has full account access; Access Key can be
+  // restricted to read+write on this single bin. Create an Access Key at
+  // JSONbin → API Keys → Access Keys (Read + Update, scoped to your bin).
+  const DEFAULT_BIN_CONFIG = {
+    binId:   '',
+    apiKey:  '',        // Access Key — Read+Update only, scoped to this bin. NOT the Master Key.
+    keyType: 'access'   // 'access' = send via X-Access-Key, 'master' = send via X-Master-Key. JSONbin rejects mismatches with 401.
+  };
+  // ===================================
+
+  let state = { config: {}, items: [] };
+  let filters = { search: '', statusTab: 'Outstanding', roles: [], pages: [], features: [], types: [], priorities: [] };
+  let inlineEditActive = false;
+  let openPopover = null;       // { itemId, field }
+  let popoverSearch = '';
+  // Sprint group collapsed-state (per browser session, not persisted to JSONbin).
+  let collapsedSprintGroups = new Set();
+
+  function flashSaveStatus(cls, msg) { const el = document.getElementById('save-status'); el.textContent = msg; el.className = 'save-status ' + cls; }
+
+  // ---------- JSONbin storage ----------
+  function getBinConfig() {
+    // 1) URL fragment takes top priority — lets each app's bookmark inject its own
+    //    bin config when the tracker is hosted on a shared URL (e.g., GitHub Pages).
+    //    Format: #bin=<binId>&key=<accessKey>&keyType=access
+    //    URLSearchParams auto-decodes percent-encoded values; the fragment itself is
+    //    never sent to servers, so the apiKey is safe from server logs and Referer headers.
+    try {
+      const hash = location.hash.startsWith('#') ? location.hash.slice(1) : location.hash;
+      if (hash) {
+        const params = new URLSearchParams(hash);
+        const binId = params.get('bin');
+        const apiKey = params.get('key');
+        if (binId && apiKey) {
+          const keyType = params.get('keyType') === 'master' ? 'master' : 'access';
+          return { binId, apiKey, keyType };
+        }
+      }
+    } catch {}
+    // 2) localStorage — lets a user override defaults on a specific browser
+    try {
+      const stored = JSON.parse(localStorage.getItem(BIN_STORAGE_KEY));
+      if (stored && stored.binId && stored.apiKey) {
+        if (!stored.keyType) stored.keyType = 'master'; // legacy stored configs predate keyType
+        return stored;
+      }
+    } catch {}
+    // 3) Fall back to the hardcoded DEFAULT_BIN_CONFIG if both fields are set
+    if (DEFAULT_BIN_CONFIG.binId && DEFAULT_BIN_CONFIG.apiKey) {
+      const out = { ...DEFAULT_BIN_CONFIG };
+      if (!out.keyType) out.keyType = 'master';
+      return out;
+    }
+    return null;
+  }
+  function setBinConfig(cfg) { localStorage.setItem(BIN_STORAGE_KEY, JSON.stringify(cfg)); }
+  function clearBinConfig() { localStorage.removeItem(BIN_STORAGE_KEY); }
+
+  // JSONbin REQUIRES the matching header for the key type:
+  //   Master Key → X-Master-Key   (full account access)
+  //   Access Key → X-Access-Key   (scoped per-bin permissions)
+  // Sending an Access Key under X-Master-Key returns 401 silently.
+  function authHeader(cfg) {
+    return cfg.keyType === 'access'
+      ? { 'X-Access-Key': cfg.apiKey }
+      : { 'X-Master-Key': cfg.apiKey };
+  }
+
+  // Auto-heal: if the chosen header returns 401, try the other header. If the
+  // retry succeeds, persist the corrected keyType to localStorage (only when the
+  // request was driven by a stored config, not the embedded default) so future
+  // requests pick the right header without retrying.
+  async function jsonbinRequest(cfg, url, init = {}) {
+    const tryWith = async (keyType) => {
+      const headerName = keyType === 'access' ? 'X-Access-Key' : 'X-Master-Key';
+      const headers = { ...(init.headers || {}), [headerName]: cfg.apiKey };
+      return fetch(url, { ...init, headers });
+    };
+    let res = await tryWith(cfg.keyType || 'master');
+    if (res.status === 401) {
+      const otherType = (cfg.keyType === 'access') ? 'master' : 'access';
+      const retry = await tryWith(otherType);
+      if (retry.ok) {
+        // Persist the corrected keyType so subsequent loads pick the right header.
+        try {
+          const stored = JSON.parse(localStorage.getItem(BIN_STORAGE_KEY));
+          if (stored && stored.binId === cfg.binId && stored.apiKey === cfg.apiKey) {
+            stored.keyType = otherType;
+            localStorage.setItem(BIN_STORAGE_KEY, JSON.stringify(stored));
+            console.info('[planner] Healed stored bin config: keyType →', otherType);
+          }
+        } catch {}
+        cfg.keyType = otherType;
+        return retry;
+      }
+      return retry; // return the retry response (still 401) so caller surfaces the real error
+    }
+    return res;
+  }
+
+  async function fetchFromBin() {
+    const cfg = getBinConfig();
+    if (!cfg) return null;
+    const res = await jsonbinRequest(cfg, JSONBIN_BASE + '/' + cfg.binId + '/latest', {
+      headers: { 'X-Bin-Meta': 'false' }
+    });
+    if (!res.ok) throw new Error('HTTP ' + res.status + ' ' + (await res.text()));
+    return await res.json();
+  }
+  async function saveToBin(stateObj) {
+    const cfg = getBinConfig();
+    if (!cfg) throw new Error('JSONbin not configured');
+    const res = await jsonbinRequest(cfg, JSONBIN_BASE + '/' + cfg.binId, {
+      method: 'PUT',
+      headers: {
+        'Content-Type': 'application/json',
+        'X-Bin-Versioning': 'false'
+      },
+      body: JSON.stringify(stateObj)
+    });
+    if (!res.ok) throw new Error('HTTP ' + res.status + ' ' + (await res.text()));
+    return await res.json();
+  }
+  async function createNewBin(apiKey, initialData) {
+    // New bins always created via Master Key (Access Keys can't create bins).
+    const res = await fetch(JSONBIN_BASE, {
+      method: 'POST',
+      headers: {
+        'X-Master-Key': apiKey,
+        'Content-Type': 'application/json',
+        'X-Bin-Name': 'Planning Tracker Backlog',
+        'X-Bin-Private': 'true'
+      },
+      body: JSON.stringify(initialData)
+    });
+    if (!res.ok) throw new Error('HTTP ' + res.status + ' ' + (await res.text()));
+    const data = await res.json();
+    return data.metadata && data.metadata.id;
+  }
+
+  function normalizeState(obj) {
+    if (!obj) return null;
+    if (!obj.items) obj.items = [];
+    if (!obj.config) obj.config = {};
+    const allRoles = obj.config.roles || [];
+    const norm = arr => (arr || []).map(x => typeof x === 'string' ? { name: x, roles: [...allRoles] } : x);
+    obj.config.pages = norm(obj.config.pages);
+    obj.config.features = norm(obj.config.features);
+    return obj;
+  }
+  function loadEmbeddedSeed() {
+    return normalizeState(JSON.parse(document.getElementById('tracker-data').textContent));
+  }
+
+  async function loadState() {
+    const cfg = getBinConfig();
+    if (!cfg) {
+      state = loadEmbeddedSeed();
+      flashSaveStatus('error', 'Not connected to JSONbin — click ⚙ to set up cloud save.');
+      showSetupPanel();
+      return;
+    }
+    flashSaveStatus('saving', 'Loading from cloud...');
+    try {
+      const fromBin = await fetchFromBin();
+      if (fromBin && (fromBin.items !== undefined || fromBin.config !== undefined)) {
+        state = normalizeState(fromBin);
+        flashSaveStatus('saved', 'Loaded · ' + new Date().toLocaleTimeString());
+      } else {
+        state = loadEmbeddedSeed();
+        flashSaveStatus('error', 'Bin returned empty data. Using local seed.');
+      }
+    } catch (e) {
+      console.error(e);
+      state = loadEmbeddedSeed();
+      flashSaveStatus('error', 'Load failed: ' + (e.message || 'unknown') + '. Using local seed.');
+    }
+  }
+
+  async function saveToCloud() {
+    const cfg = getBinConfig();
+    if (!cfg) {
+      flashSaveStatus('error', 'Not connected — set up cloud save first.');
+      showSetupPanel();
+      return;
+    }
+    flashSaveStatus('saving', 'Saving to cloud...');
+    try {
+      await saveToBin(state);
+      flashSaveStatus('saved', 'Saved · ' + new Date().toLocaleTimeString());
+    } catch (e) {
+      console.error('Save failed:', e);
+      flashSaveStatus('error', 'Save failed: ' + (e.message || 'unknown'));
+      // Surface auth/quota errors loudly so they aren't missed in the tiny status pill.
+      alert('Save failed: ' + (e.message || 'unknown') + '\n\nYour changes are NOT in the cloud. Open DevTools → Console for details.');
+    }
+  }
+
+  async function reloadFromBin() {
+    await loadState();
+    render();
+  }
+
+  // ---------- Setup panel ----------
+  function showSetupPanel() {
+    const panel = document.getElementById('setup-panel');
+    if (!panel) return;
+    panel.style.display = 'block';
+    const cfg = getBinConfig();
+    if (cfg) {
+      document.getElementById('setup-api-key').value = cfg.apiKey || '';
+      document.getElementById('setup-bin-id').value = cfg.binId || '';
+    }
+  }
+  function hideSetupPanel() {
+    const panel = document.getElementById('setup-panel');
+    if (panel) panel.style.display = 'none';
+    document.getElementById('setup-status').textContent = '';
+    document.getElementById('setup-status').className = 'setup-status';
+  }
+  // Probe which header authenticates this key. Tries X-Access-Key first (the
+  // scoped, safer option); falls back to X-Master-Key. Returns the keyType that
+  // worked, or null if neither did.
+  async function detectKeyType(binId, apiKey) {
+    const probe = async (headerName) => {
+      const res = await fetch(JSONBIN_BASE + '/' + binId + '/latest', {
+        headers: { [headerName]: apiKey, 'X-Bin-Meta': 'false' }
+      });
+      return res.ok;
+    };
+    if (await probe('X-Access-Key')) return 'access';
+    if (await probe('X-Master-Key')) return 'master';
+    return null;
+  }
+
+  async function connectBin() {
+    const apiKey = (document.getElementById('setup-api-key').value || '').trim();
+    let binId = (document.getElementById('setup-bin-id').value || '').trim();
+    const statusEl = document.getElementById('setup-status');
+    statusEl.className = 'setup-status';
+    if (!apiKey) { statusEl.textContent = 'Paste your API key first.'; statusEl.classList.add('error'); return; }
+    statusEl.textContent = binId ? 'Connecting...' : 'Creating new bin...';
+    try {
+      let keyType;
+      if (!binId) {
+        // Creating a new bin requires Master Key — Access Keys can't create bins.
+        binId = await createNewBin(apiKey, state);
+        if (!binId) throw new Error('Bin created but no ID returned');
+        keyType = 'master';
+      } else {
+        // Detect which header authenticates this key against the existing bin.
+        keyType = await detectKeyType(binId, apiKey);
+        if (!keyType) throw new Error('Key not accepted as either X-Access-Key or X-Master-Key. Check the bin ID and the key value.');
+      }
+      setBinConfig({ binId, apiKey, keyType });
+      statusEl.textContent = 'Connected · bin ID ' + binId + ' · keyType=' + keyType;
+      statusEl.classList.add('success');
+      flashSaveStatus('saved', 'Connected to JSONbin');
+      setTimeout(async () => {
+        hideSetupPanel();
+        await loadState();
+        render();
+      }, 700);
+    } catch (e) {
+      console.error(e);
+      clearBinConfig();
+      statusEl.textContent = 'Failed: ' + (e.message || 'unknown');
+      statusEl.classList.add('error');
+    }
+  }
+  function disconnectBin() {
+    if (!confirm('Disconnect from JSONbin? Your data will stay in the bin but the tracker will use embedded seed data until you reconnect.')) return;
+    clearBinConfig();
+    flashSaveStatus('error', 'Disconnected. Tracker is using embedded seed.');
+    showSetupPanel();
+  }
+
+  function escapeHtml(s) { return String(s == null ? '' : s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;'); }
+  function escapeAttr(s) { return escapeHtml(s).replace(/'/g, '&#39;'); }
+  // Wrap http/https URLs inside already-escaped text as clickable anchors. Runs AFTER escapeHtml.
+  function linkify(escapedText) {
+    return escapedText.replace(/(https?:\/\/[^\s<]+)/g, '<a href="$1" target="_blank" rel="noopener">$1</a>');
+  }
+  function richContent(text) { return text ? linkify(escapeHtml(text)) : ''; }
+  function stageClass(s) { return ({ 'Outstanding':'stage-outstanding','Current Sprint':'stage-current','QA':'stage-qa','Verified':'stage-verified' })[s] || 'stage-outstanding'; }
+  function stageNumber(s) { return ({ 'Outstanding':1,'Current Sprint':2,'QA':3,'Verified':4 })[s] || 1; }
+  function typeClass(t) { return 'type-' + (t || '').toLowerCase(); }
+  function todayISO() { const d = new Date(); const mm = String(d.getMonth() + 1).padStart(2, '0'); const dd = String(d.getDate()).padStart(2, '0'); return d.getFullYear() + '-' + mm + '-' + dd; }
+  function getEligible(arr, selectedRoles) {
+    if (!selectedRoles || selectedRoles.length === 0) return arr;
+    return arr.filter(x => selectedRoles.every(r => (x.roles || []).includes(r)));
+  }
+
+  function counts() {
+    const c = {};
+    (state.config.statuses || []).forEach(s => c[s] = 0);
+    state.items.forEach(i => { if (c[i.status] != null) c[i.status]++; });
+    return c;
+  }
+  function renderStatusTabs() {
+    const c = counts();
+    const tabs = state.config.statuses || [];
+    const wrap = document.getElementById('status-tabs');
+    let template = '1fr';
+    for (let i = 1; i < tabs.length; i++) template += ' auto 1fr';
+    wrap.style.gridTemplateColumns = template;
+    wrap.innerHTML = tabs.map((t, idx) => {
+      const isActive = filters.statusTab === t;
+      const sub = isActive ? `Stage ${stageNumber(t)} · Active` : `Stage ${stageNumber(t)}`;
+      const card = `<button class="stage-card ${stageClass(t)} ${isActive ? 'active' : ''}" onclick="setStatusTab('${escapeAttr(t)}')"><div class="stage-card-row"><span class="stage-card-name">${escapeHtml(t)}</span><span class="stage-card-count">${c[t] || 0}</span></div><div class="stage-card-sub">${escapeHtml(sub)}</div></button>`;
+      const chev = idx < tabs.length - 1 ? `<div class="stage-chevron">${ICONS.chevronRight}</div>` : '';
+      return card + chev;
+    }).join('');
+  }
+  function setStatusTab(t) { filters.statusTab = t; render(); }
+
+  function renderMoreFilters() {
+    const pagesNames = (state.config.pages || []).map(p => p.name);
+    const featuresNames = (state.config.features || []).map(f => f.name);
+    const groups = [
+      { id: 'filter-roles',    values: state.config.roles || [],      key: 'roles' },
+      { id: 'filter-pages',    values: pagesNames,                    key: 'pages' },
+      { id: 'filter-features', values: featuresNames,                 key: 'features' },
+      { id: 'filter-types',    values: state.config.types || [],      key: 'types' },
+      { id: 'filter-pri',      values: state.config.priorities || [], key: 'priorities' }
+    ];
+    groups.forEach(g => {
+      document.getElementById(g.id).innerHTML = g.values.map(v => `<span class="chip ${filters[g.key].includes(v) ? 'active' : ''}" onclick="toggleFilter('${g.key}','${escapeAttr(v)}')">${escapeHtml(v)}</span>`).join('');
+    });
+    const bits = [];
+    if (filters.roles.length)      bits.push(filters.roles.length + ' role');
+    if (filters.pages.length)      bits.push(filters.pages.length + ' page');
+    if (filters.features.length)   bits.push(filters.features.length + ' feature');
+    if (filters.types.length)      bits.push(filters.types.length + ' type');
+    if (filters.priorities.length) bits.push(filters.priorities.length + ' priority');
+    document.getElementById('filter-summary').textContent = bits.length ? '· ' + bits.join(' · ') + ' active' : '';
+    document.getElementById('clear-filters-btn').style.display = (bits.length || filters.statusTab !== 'Outstanding' || filters.search) ? 'inline' : 'none';
+  }
+  function toggleFilter(key, val) {
+    const arr = filters[key];
+    const i = arr.indexOf(val);
+    if (i >= 0) arr.splice(i, 1); else arr.push(val);
+    render();
+  }
+  function toggleMoreFilters() {
+    const d = document.getElementById('filter-drawer');
+    d.classList.toggle('open');
+    document.getElementById('more-arrow').textContent = d.classList.contains('open') ? '▾' : '▸';
+  }
+  function clearFilters() {
+    filters = { search: '', statusTab: 'Outstanding', roles: [], pages: [], features: [], types: [], priorities: [] };
+    document.getElementById('search-input').value = '';
+    render();
+  }
+  function matchesFilters(item) {
+    const q = (document.getElementById('search-input').value || '').toLowerCase().trim();
+    if (q) {
+      const hay = (item.title + ' ' + (item.userDetails || '') + ' ' + (item.claudeResponse || '') + ' ' + (item.page || '') + ' ' + (item.feature || '')).toLowerCase();
+      if (!hay.includes(q)) return false;
+    }
+    if (filters.statusTab && item.status !== filters.statusTab) return false;
+    if (filters.roles.length && !filters.roles.some(r => (item.roles || []).includes(r))) return false;
+    if (filters.pages.length) {
+      const isAllPages = item.page === 'All pages';
+      if (!filters.pages.includes(item.page) && !isAllPages) return false;
+    }
+    if (filters.features.length && !filters.features.includes(item.feature)) return false;
+    if (filters.types.length && !filters.types.includes(item.type)) return false;
+    if (filters.priorities.length && !filters.priorities.includes(item.priority)) return false;
+    return true;
+  }
+  function renderSummaryStrip(filteredCount) {
+    document.getElementById('summary-strip').innerHTML = `Showing <b>${filteredCount}</b> of <b>${state.items.length}</b> items.`;
+  }
+
+  // ---------- Always-live display panel ----------
+  function liveStatusClass(s) { return ({ 'Outstanding':'live-st-outstanding','Current Sprint':'live-st-current','QA':'live-st-qa','Verified':'live-st-verified' })[s] || 'live-st-outstanding'; }
+  function liveTypeClass(t) { return t ? 'live-type-' + t.toLowerCase() : ''; }
+  function stageDotKey(s) { return ({ 'Outstanding':'outstanding','Current Sprint':'current','QA':'qa','Verified':'verified' })[s] || 'outstanding'; }
+
+  function isPopoverOpenFor(itemId, field) {
+    return openPopover && openPopover.itemId === itemId && openPopover.field === field;
+  }
+
+  function renderFieldPopover(item) {
+    if (!openPopover || openPopover.itemId !== item.id) return '';
+    const field = openPopover.field;
+    if (field === 'status')  return renderStatusPopover(item);
+    if (field === 'type')    return renderTypePopover(item);
+    if (field === 'page')    return renderPagePopover(item);
+    if (field === 'feature') return renderFeaturePopover(item);
+    return '';
+  }
+
+  function renderStatusPopover(item) {
+    const c = counts();
+    // QA-failed items cannot return to Outstanding.
+    const allowedStatuses = (state.config.statuses || []).filter(s => !(item.qaFailed && s === 'Outstanding'));
+    const opts = allowedStatuses.map(s => {
+      const isActive = (item.status || 'Outstanding') === s;
+      const rightSide = isActive
+        ? `<span class="popover-check">${ICONS.checkSm}</span>`
+        : `<span class="popover-option-count">${c[s] || 0}</span>`;
+      return `<div class="popover-option ${isActive ? 'active' : ''}" onclick="selectPopoverOption(event, ${item.id}, 'status', '${escapeAttr(s)}')"><span class="popover-option-dot ${stageDotKey(s)}"></span><span class="popover-option-label">${escapeHtml(s)}</span>${rightSide}</div>`;
+    }).join('');
+    return `<div class="field-popover" onclick="event.stopPropagation()"><div class="popover-header">Move to stage</div>${opts}</div>`;
+  }
+
+  function renderTypePopover(item) {
+    const opts = (state.config.types || []).map(t => {
+      const isActive = item.type === t;
+      const check = isActive ? `<span class="popover-check">${ICONS.checkSm}</span>` : '';
+      return `<div class="popover-option ${isActive ? 'active' : ''}" onclick="selectPopoverOption(event, ${item.id}, 'type', '${escapeAttr(t)}')"><span class="badge ${typeClass(t)}">${escapeHtml(t)}</span><span style="flex:1;"></span>${check}</div>`;
+    }).join('');
+    return `<div class="field-popover" onclick="event.stopPropagation()">${opts}<div class="popover-divider"></div><div class="popover-option popover-clear" onclick="selectPopoverOption(event, ${item.id}, 'type', '')">${ICONS.xSm}<span>Clear</span></div></div>`;
+  }
+
+  function renderPageFeatureList(item, field) {
+    const arr = field === 'page' ? (state.config.pages || []) : (state.config.features || []);
+    const eligible = getEligible(arr, item.roles || []);
+    const filtered = popoverSearch
+      ? eligible.filter(x => x.name.toLowerCase().includes(popoverSearch.toLowerCase()))
+      : eligible;
+    const current = field === 'page' ? item.page : item.feature;
+    if (filtered.length === 0) return '<div class="popover-empty">No matches.</div>';
+    return filtered.map(p => {
+      const isActive = current === p.name;
+      const check = isActive ? `<span class="popover-check">${ICONS.checkSm}</span>` : '';
+      return `<div class="popover-option ${isActive ? 'active' : ''}" onclick="selectPopoverOption(event, ${item.id}, '${field}', '${escapeAttr(p.name)}')"><span class="popover-option-label">${escapeHtml(p.name)}</span>${check}</div>`;
+    }).join('');
+  }
+
+  function renderPagePopover(item) {
+    const totalPages = (state.config.pages || []).length;
+    const eligible = getEligible(state.config.pages || [], item.roles || []);
+    const filtered = popoverSearch
+      ? eligible.filter(x => x.name.toLowerCase().includes(popoverSearch.toLowerCase()))
+      : eligible;
+    const roleFilterApplied = (item.roles || []).length > 0;
+    const footer = roleFilterApplied
+      ? `Roles filter applied · ${filtered.length} of ${totalPages} pages`
+      : `${filtered.length} of ${totalPages} pages`;
+    return `<div class="field-popover" onclick="event.stopPropagation()">
+      <div class="popover-search">${ICONS.search}<input type="text" placeholder="Search pages..." value="${escapeAttr(popoverSearch)}" oninput="onPopoverSearchInput(event, this.value)" onkeydown="onPopoverInputKeydown(event)"></div>
+      <div class="popover-list" id="popover-list">${renderPageFeatureList(item, 'page')}</div>
+      <div class="popover-footer" id="popover-footer">${footer}</div>
+    </div>`;
+  }
+
+  function renderFeaturePopover(item) {
+    const totalFeatures = (state.config.features || []).length;
+    const eligible = getEligible(state.config.features || [], item.roles || []);
+    const filtered = popoverSearch
+      ? eligible.filter(x => x.name.toLowerCase().includes(popoverSearch.toLowerCase()))
+      : eligible;
+    const roleFilterApplied = (item.roles || []).length > 0;
+    const footer = roleFilterApplied
+      ? `Roles filter applied · ${filtered.length} of ${totalFeatures} features`
+      : `${filtered.length} of ${totalFeatures} features`;
+    return `<div class="field-popover" onclick="event.stopPropagation()">
+      <div class="popover-search">${ICONS.search}<input type="text" placeholder="Search features..." value="${escapeAttr(popoverSearch)}" oninput="onPopoverSearchInput(event, this.value)" onkeydown="onPopoverInputKeydown(event)"></div>
+      <div class="popover-list" id="popover-list">${renderPageFeatureList(item, 'feature')}</div>
+      <div class="popover-footer" id="popover-footer">${footer}</div>
+      <div class="popover-add-feature">${ICONS.plusSm}<input type="text" placeholder="Type a new feature name + Enter" onkeydown="onAddFeatureKeydown(event, ${item.id})"></div>
+    </div>`;
+  }
+
+  function renderDisplayPanel(item) {
+    const priorityOn = item.priority === 'Yes';
+    const status = item.status || 'Outstanding';
+    const isVerified = status === 'Verified';
+    const isQA = status === 'QA';
+    const isCurrentSprint = status === 'Current Sprint';
+    const isOutstanding = status === 'Outstanding';
+    const isSprintLocked = isCurrentSprint && !!item.sprintLocked;
+    const isPending = !!item.pendingClaudeReview && (isQA || isCurrentSprint || isOutstanding);
+    const isApproved = isCurrentSprint && !!item.approvedForBuild;
+    const isAwaiting = (isCurrentSprint || isOutstanding) && !isSprintLocked && !isPending && !isApproved && !!(item.claudeResponse && item.claudeResponse.trim());
+    const stageLocked = isQA || isVerified || isSprintLocked;
+    const fullyLocked = isVerified || isSprintLocked;
+
+    // Status pill
+    const statusOpen = isPopoverOpenFor(item.id, 'status');
+    const statusPill = stageLocked
+      ? `<span class="live-pill ${liveStatusClass(status)} locked" title="${isVerified ? 'Verified · locked' : 'Stage locked at QA'}">${escapeHtml(status)}<span class="lock-mark">${ICONS.lockSm}</span></span>`
+      : `<span class="live-pill ${liveStatusClass(status)} ${statusOpen ? 'open' : ''}" data-popover-field="status" data-popover-item="${item.id}" title="Click to change status">${escapeHtml(status)}${ICONS.chevronDown}${statusOpen ? renderStatusPopover(item) : ''}</span>`;
+
+    // Type pill
+    const typeOpen = isPopoverOpenFor(item.id, 'type');
+    const typeLabel = item.type || 'Type';
+    const typeEmpty = item.type ? '' : 'empty';
+    const typePill = stageLocked
+      ? `<span class="live-pill ${liveTypeClass(item.type)} ${typeEmpty} locked" title="Locked at ${status}">${escapeHtml(typeLabel)}</span>`
+      : `<span class="live-pill ${liveTypeClass(item.type)} ${typeEmpty} ${typeOpen ? 'open' : ''}" data-popover-field="type" data-popover-item="${item.id}" title="Click to change type">${escapeHtml(typeLabel)}${ICONS.chevronDown}${typeOpen ? renderTypePopover(item) : ''}</span>`;
+
+    // Role pills — toggleable except when fully locked (Verified)
+    const rolePills = (state.config.roles || []).map(r => {
+      const isOn = (item.roles || []).includes(r);
+      const inner = isOn ? `${escapeHtml(r)}${ICONS.smallX}` : `${ICONS.smallPlus}${escapeHtml(r)}`;
+      if (fullyLocked) {
+        if (!isOn) return ''; // hide unselected roles when fully locked
+        return `<span class="live-role-pill on" style="cursor: default;">${escapeHtml(r)}</span>`;
+      }
+      return `<span class="live-role-pill ${isOn ? 'on' : 'off'}" onclick="toggleItemRole(${item.id}, '${escapeAttr(r)}')" title="${isOn ? 'Click to remove' : 'Click to add'}">${inner}</span>`;
+    }).join('');
+
+    // Page control
+    const pageOpen = isPopoverOpenFor(item.id, 'page');
+    const pageEmpty = item.page ? '' : 'empty';
+    const pageLabel = item.page || 'Page';
+    const pageControl = stageLocked
+      ? `<span class="live-where-control ${pageEmpty} locked">${escapeHtml(pageLabel)}</span>`
+      : `<span class="live-where-control ${pageEmpty} ${pageOpen ? 'open' : ''}" data-popover-field="page" data-popover-item="${item.id}" title="Click to change page">${escapeHtml(pageLabel)}${ICONS.chevronDown}${pageOpen ? renderPagePopover(item) : ''}</span>`;
+
+    // Feature control
+    const featureOpen = isPopoverOpenFor(item.id, 'feature');
+    const featureEmpty = item.feature ? '' : 'empty';
+    const featureLabel = item.feature || 'Feature';
+    const featureControl = stageLocked
+      ? `<span class="live-where-control italic ${featureEmpty} locked">${escapeHtml(featureLabel)}</span>`
+      : `<span class="live-where-control italic ${featureEmpty} ${featureOpen ? 'open' : ''}" data-popover-field="feature" data-popover-item="${item.id}" title="Click to change feature">${escapeHtml(featureLabel)}${ICONS.chevronDown}${featureOpen ? renderFeaturePopover(item) : ''}</span>`;
+
+    // Body blocks — Your details locked when fully locked; gets pending styling in pending state
+    const hasUser = !!item.userDetails;
+    const hasClaude = !!item.claudeResponse;
+    const userExtraClass = isPending ? ' edited-in-qa' : '';
+    const userLabelExtra = isPending ? ' · edited' : '';
+    const userBlock = fullyLocked
+      ? `<div class="body-block user${userExtraClass}"><span class="block-label">Your details · locked</span><span class="block-content">${hasUser ? richContent(item.userDetails) : '<span class="empty">No details.</span>'}</span></div>`
+      : `<div class="body-block user${userExtraClass}"><span class="block-label">Your details${userLabelExtra}</span><span class="block-content inline-editable" onclick="startInlineEdit(${item.id}, 'userDetails', this)">${hasUser ? richContent(item.userDetails) : '<span class="empty">No details yet — click to add.</span>'}</span></div>`;
+    const claudeExtraClass = isPending ? ' stale' : '';
+    const claudeLabelExtra = isPending ? '<span class="stale-tag">· stale</span>' : (isAwaiting ? '<span class="stale-tag">· new</span>' : '');
+    const claudeBlock = `<div class="body-block claude${claudeExtraClass}"><span class="block-label">Claude's feedback${claudeLabelExtra}</span><span class="block-content">${hasClaude ? richContent(item.claudeResponse) : '<span class="empty">No feedback yet.</span>'}</span></div>`;
+
+    // Action buttons — vary by stage and sub-state
+    let actionsHtml;
+    if (isVerified) {
+      actionsHtml = ''; // Verified is fully locked
+    } else if (isSprintLocked) {
+      actionsHtml = ''; // Sprint locked — Claude moves these to QA
+    } else if (isQA) {
+      // QA: approve / send-back only. Copy + delete are intentionally hidden here —
+      // items at QA are sprint-tracked work and must not be duplicated or deleted casually.
+      const approveBtn = isPending
+        ? ''
+        : `<button class="approve-btn" title="Approve and move to Verified" onclick="approveItem(${item.id})">${ICONS.circleCheck}Approve</button>`;
+      const sendBackBtn = `<button class="send-back-btn" title="Send back to Current Sprint as QA Failed" onclick="sendBackToSprint(${item.id})">${ICONS.arrowBackUp}Back to sprint</button>`;
+      actionsHtml = `${sendBackBtn}${approveBtn}`;
+    } else if (isCurrentSprint) {
+      // Current Sprint: move-back / approve / un-approve only. Copy + delete hidden —
+      // these are committed work items, not draft scratch.
+      // Move arrow hidden when qaFailed (can't return to Outstanding).
+      const moveBtn = item.qaFailed
+        ? ''
+        : `<button class="icon-btn demote" title="Move back to Outstanding" onclick="moveStage(${item.id})">${ICONS.arrowLeft}</button>`;
+      let approveBtn = '';
+      if (isApproved) {
+        approveBtn = `<button class="unapprove-btn" title="Un-approve" onclick="unapproveForBuild(${item.id})">${ICONS.undo}Un-approve</button>`;
+      } else if (!isPending) {
+        approveBtn = `<button class="approve-btn" title="Approve for build" onclick="approveForBuild(${item.id})">${ICONS.circleCheck}Approve</button>`;
+      }
+      actionsHtml = `${moveBtn}${approveBtn}`;
+    } else {
+      // Outstanding — the only stage where copy + delete are allowed (draft / scratch space).
+      const moveBtn = `<button class="icon-btn promote" title="Move to Current Sprint" onclick="moveStage(${item.id})">${ICONS.arrowRight}</button>`;
+      actionsHtml = `${moveBtn}<button class="icon-btn" title="Copy this item" onclick="copyItem(${item.id})">${ICONS.copy}</button><button class="icon-btn del" title="Delete" onclick="deleteItem(${item.id})">${ICONS.trash}</button>`;
+    }
+
+    // Empty-title rows render with NEW badge + blue accent border (only for non-locked items)
+    const titleEmpty = !item.title || !item.title.trim();
+    const titleDisplay = titleEmpty
+      ? '<span class="title-placeholder">Click to add title...</span>'
+      : escapeHtml(item.title);
+    const newBadge = (!stageLocked && titleEmpty) ? '<span class="new-badge-inline">New</span>' : '';
+    const pendingBadge = isPending ? `<span class="pending-badge">${ICONS.alertCircle}Pending Claude review &amp; update<span class="clear-x" onclick="clearPendingReview(${item.id})" title="Mark as reviewed">${ICONS.smallX}</span></span>` : '';
+    const verifiedBadge = isVerified ? `<span class="verified-badge">${ICONS.circleCheck}Verified · locked</span>` : '';
+    // QA Failed tag persists across all stages until the item is approved to Verified.
+    // Includes the source sprint (e.g., "QA Failed · Sprint N") when lastSprintNumber is set.
+    const qaFailedSprintRef = (item.lastSprintNumber != null) ? ' · Sprint ' + item.lastSprintNumber : '';
+    const qaFailedBadge = (item.qaFailed && !isVerified) ? `<span class="qa-failed-badge">${ICONS.alertCircle}QA Failed${escapeHtml(qaFailedSprintRef)}</span>` : '';
+    const awaitingBadge = isAwaiting ? `<span class="awaiting-badge">${ICONS.eye}Awaiting your review</span>` : '';
+    const approvedBadge = isApproved ? `<span class="approved-badge">${ICONS.circleCheck}Approved for build</span>` : '';
+    const sprintLockedBadge = isSprintLocked ? `<span class="sprint-locked-badge">${ICONS.lockSm}Sprint locked</span>` : '';
+    const titleLockMark = stageLocked ? `<span class="lock-mark">${ICONS.lockSm}</span>` : '';
+
+    let panelClass = 'item-panel';
+    if (titleEmpty && !stageLocked) panelClass += ' is-new';
+    if (isSprintLocked) panelClass += ' sprint-locked';
+    else if (isPending) panelClass += ' pending-review';
+    else if (isApproved) panelClass += ' approved-for-build';
+    else if (isAwaiting) panelClass += ' awaiting-user-review';
+    if (isVerified) panelClass += ' verified-locked';
+
+    const titleEl = stageLocked
+      ? `<span class="item-title locked">${titleDisplay}</span>`
+      : `<span class="item-title inline-editable" onclick="startInlineEdit(${item.id}, 'title', this)">${titleDisplay}</span>`;
+    const starEl = fullyLocked
+      ? `<span class="item-star locked ${priorityOn ? 'on' : 'off'}">★</span>`
+      : `<span class="item-star clickable ${priorityOn ? 'on' : 'off'}" onclick="toggleItemPriority(${item.id})" title="${priorityOn ? 'Priority — click to remove' : 'Not priority — click to mark'}">★</span>`;
+
+    return `
+      <div class="${panelClass}" data-id="${item.id}">
+        ${starEl}
+        <div class="panel-content">
+          <div class="panel-header">
+            <span class="item-id">#${item.id}</span>
+            ${titleEl}
+            ${titleLockMark}
+            ${newBadge}
+            ${pendingBadge}
+            ${qaFailedBadge}
+            ${awaitingBadge}
+            ${approvedBadge}
+            ${sprintLockedBadge}
+            ${verifiedBadge}
+          </div>
+          <div class="panel-badges">${statusPill}${typePill}${rolePills}<span class="where-sep">·</span>${pageControl}<span class="where-sep">·</span>${featureControl}</div>
+          <div class="panel-body">${userBlock}${claudeBlock}</div>
+        </div>
+        <div class="panel-actions">
+          ${actionsHtml}
+        </div>
+      </div>
+    `;
+  }
+
+  function renderItems() {
+    const list = document.getElementById('items-list');
+    const filtered = state.items.filter(matchesFilters);
+    renderSummaryStrip(filtered.length);
+
+    const priOrder = { 'Yes':0, 'No':1 };
+    filtered.sort((a, b) => {
+      // Pending Claude Review items pinned to the top (QA or Current Sprint)
+      const ap = (a.pendingClaudeReview && (a.status === 'QA' || a.status === 'Current Sprint')) ? 0 : 1;
+      const bp = (b.pendingClaudeReview && (b.status === 'QA' || b.status === 'Current Sprint')) ? 0 : 1;
+      if (ap !== bp) return ap - bp;
+      // Then Priority Yes before No
+      const pa = priOrder[a.priority] ?? 9;
+      const pb = priOrder[b.priority] ?? 9;
+      if (pa !== pb) return pa - pb;
+      // Then newest first
+      return (b.id || 0) - (a.id || 0);
+    });
+
+    let html = '';
+    // Complete Sprint bar — only shown when viewing the Current Sprint tab and there are items
+    if (filters.statusTab === 'Current Sprint') {
+      html += renderCompleteSprintBar();
+    }
+    if (filtered.length === 0) {
+      html += `<div class="empty-state"><h3>${state.items.length === 0 ? 'No items yet.' : 'No items match your filters.'}</h3><p>${state.items.length === 0 ? 'Click the row below to add your first item.' : 'Try adjusting the filters above.'}</p></div>`;
+    } else if (filters.statusTab === 'Outstanding') {
+      // Outstanding stage doesn't use sprint grouping — flat list only.
+      html += filtered.map(item => renderDisplayPanel(item)).join('');
+    } else {
+      // Current Sprint / QA / Verified — render sprint groups first, ungrouped items below.
+      html += renderItemsWithGroups(filtered);
+    }
+    html += `<div class="ghost-row" onclick="startAddItem()">${ICONS.plus}<span>Add a new item</span></div>`;
+    list.innerHTML = html;
+  }
+
+  // Render items split into sprint-numbered collapsible groups followed by ungrouped items.
+  // Preserves the original sort order within each bucket.
+  function renderItemsWithGroups(items) {
+    const groups = new Map();
+    const ungrouped = [];
+    items.forEach(item => {
+      if (item.sprintNumber != null) {
+        if (!groups.has(item.sprintNumber)) groups.set(item.sprintNumber, []);
+        groups.get(item.sprintNumber).push(item);
+      } else {
+        ungrouped.push(item);
+      }
+    });
+    // Newest sprint number first.
+    const sortedSprints = Array.from(groups.keys()).sort((a, b) => b - a);
+
+    let html = '';
+    sortedSprints.forEach(n => {
+      const groupItems = groups.get(n);
+      const isCollapsed = collapsedSprintGroups.has(n);
+      const chev = isCollapsed ? ICONS.chevronRight : ICONS.chevronDown;
+      const countLabel = groupItems.length + ' ' + (groupItems.length === 1 ? 'item' : 'items');
+      html += `<div class="sprint-group ${isCollapsed ? 'collapsed' : ''}">
+        <div class="sprint-group-header" onclick="toggleSprintGroup(${n})">
+          <span class="sprint-group-chev">${chev}</span>
+          <span class="sprint-group-name">Sprint ${n}</span>
+          <button class="sprint-group-edit" onclick="event.stopPropagation(); editSprintNumber(${n})" title="Rename sprint number">${ICONS.pencil}</button>
+          <span class="sprint-group-count">${countLabel}</span>
+        </div>
+        <div class="sprint-group-body">
+          ${groupItems.map(item => renderDisplayPanel(item)).join('')}
+        </div>
+      </div>`;
+    });
+    if (ungrouped.length) {
+      html += ungrouped.map(item => renderDisplayPanel(item)).join('');
+    }
+    return html;
+  }
+
+  function toggleSprintGroup(n) {
+    if (collapsedSprintGroups.has(n)) collapsedSprintGroups.delete(n);
+    else collapsedSprintGroups.add(n);
+    render();
+  }
+
+  // Rename a sprint number. Updates every item whose sprintNumber or lastSprintNumber
+  // matches the old value. Conflicts (other items already in the target sprint) abort.
+  function editSprintNumber(currentN) {
+    const newStr = prompt('Rename Sprint ' + currentN + ' to:', String(currentN));
+    if (newStr === null) return;
+    const newN = parseInt(String(newStr).trim(), 10);
+    if (!Number.isFinite(newN) || newN <= 0) { alert('Sprint number must be a positive integer.'); return; }
+    if (newN === currentN) return;
+    const conflict = state.items.some(it => it.sprintNumber === newN);
+    if (conflict) { alert('Sprint ' + newN + ' already exists. Pick a different number.'); return; }
+    state.items.forEach(it => {
+      if (it.sprintNumber === currentN) it.sprintNumber = newN;
+      if (it.lastSprintNumber === currentN) it.lastSprintNumber = newN;
+    });
+    if (collapsedSprintGroups.has(currentN)) {
+      collapsedSprintGroups.delete(currentN);
+      collapsedSprintGroups.add(newN);
+    }
+    // Bump nextSprintNumber if the rename consumed it or went beyond it.
+    const next = state.config.nextSprintNumber || 30;
+    if (newN >= next) state.config.nextSprintNumber = newN + 1;
+    render();
+    flashSaveStatus('saving', 'Sprint ' + currentN + ' renamed to Sprint ' + newN + ' — click Save to write to disk.');
+  }
+
+  function renderCompleteSprintBar() {
+    const csItems = state.items.filter(i => i.status === 'Current Sprint');
+    if (csItems.length === 0) return '';
+    const total = csItems.length;
+    // Items eligible for bundling into the NEXT sprint: approved, not pending review, not already in a sprint group.
+    const bundlable = csItems.filter(i => i.approvedForBuild && !i.pendingClaudeReview && i.sprintNumber == null).length;
+    const grouped   = csItems.filter(i => i.sprintNumber != null).length;
+    const pending   = csItems.filter(i => i.pendingClaudeReview).length;
+    const awaiting  = csItems.filter(i => !i.pendingClaudeReview && !i.approvedForBuild && i.sprintNumber == null && i.claudeResponse && i.claudeResponse.trim()).length;
+    const neutral   = total - bundlable - grouped - pending - awaiting;
+    const nextN     = state.config.nextSprintNumber || 30;
+
+    const bits = [];
+    if (bundlable > 0) bits.push(`<span class="cs-bar-ready">${bundlable} ready to bundle into Sprint ${nextN}</span>`);
+    if (grouped   > 0) bits.push(grouped + ' already grouped');
+    if (awaiting  > 0) bits.push(awaiting + ' awaiting your review');
+    if (pending   > 0) bits.push(pending + ' pending Claude');
+    if (neutral   > 0) bits.push(neutral + ' no Claude response yet');
+    const subText = bits.length ? bits.join(' · ') : 'No items.';
+
+    const btn = bundlable > 0
+      ? `<button class="complete-sprint-btn" onclick="completeSprint()">${ICONS.lockSm}Complete Sprint → Sprint ${nextN}</button>`
+      : `<button class="complete-sprint-btn disabled" disabled title="Approve at least one item to bundle into a sprint">${ICONS.lockSm}Complete Sprint</button>`;
+
+    return `<div class="complete-sprint-bar">
+      <div class="cs-bar-info">
+        <div class="cs-bar-title">Current sprint · ${total} items</div>
+        <div class="cs-bar-sub">${subText}</div>
+      </div>
+      ${btn}
+    </div>`;
+  }
+  function render() { renderStatusTabs(); renderMoreFilters(); renderItems(); }
+
+  // ---------- Inline edit (title + details on display rows) ----------
+  function startInlineEdit(id, field, span) {
+    if (inlineEditActive) return;
+    const item = state.items.find(i => i.id === id);
+    if (!item) return;
+    const itemStatus = item.status || 'Outstanding';
+    // Verified items are fully locked — block all inline edits.
+    if (itemStatus === 'Verified') return;
+    // QA items: title is locked. Your details remains editable.
+    if (itemStatus === 'QA' && field === 'title') return;
+
+    inlineEditActive = true;
+    const current = item[field] || '';
+    const isMultiline = field === 'userDetails';
+    const input = document.createElement(isMultiline ? 'textarea' : 'input');
+    if (!isMultiline) input.type = 'text';
+    input.className = 'inline-edit-input' + (isMultiline ? ' multiline' : '');
+    input.value = current;
+    span.replaceWith(input);
+    input.focus();
+    if (!isMultiline) input.setSelectionRange(input.value.length, input.value.length);
+
+    let done = false;
+    function commit(save) {
+      if (done) return; done = true; inlineEditActive = false;
+      if (save) {
+        const newVal = isMultiline ? input.value : input.value.trim();
+        if (newVal !== current) {
+          if (!newVal && field === 'title') { render(); return; }
+          item[field] = newVal;
+          // Editing Your details while in QA → flip card to pending Claude review.
+          // Editing Your details while in Current Sprint (and Claude has responded) → same pending flip + clear approval.
+          // Editing Your details while in Outstanding (and Claude has responded) → same pending flip.
+          if (field === 'userDetails' && itemStatus === 'QA') {
+            item.pendingClaudeReview = true;
+            flashSaveStatus('saving', '#' + id + ' flagged for Claude review — click Save to write to disk.');
+          } else if (field === 'userDetails' && itemStatus === 'Current Sprint' && item.claudeResponse && item.claudeResponse.trim()) {
+            item.pendingClaudeReview = true;
+            item.approvedForBuild = false;
+            flashSaveStatus('saving', '#' + id + ' flagged for Claude review — click Save to write to disk.');
+          } else if (field === 'userDetails' && itemStatus === 'Outstanding' && item.claudeResponse && item.claudeResponse.trim()) {
+            item.pendingClaudeReview = true;
+            flashSaveStatus('saving', '#' + id + ' flagged for Claude review — click Save to write to disk.');
+          } else {
+            flashSaveStatus('saving', 'Edited — click Save to write to disk.');
+          }
+        }
+      }
+      render();
+    }
+    input.addEventListener('blur', () => commit(true));
+    input.addEventListener('keydown', (e) => {
+      if (e.key === 'Escape') { e.preventDefault(); commit(false); }
+      if (e.key === 'Enter' && !isMultiline) { e.preventDefault(); commit(true); }
+    });
+  }
+
+  // ---------- Inline add ----------
+  // Click "+ Add Item" → drop an empty row into Outstanding, auto-focus the title for inline editing.
+  function startAddItem() {
+    const nextId = state.items.reduce((m, i) => Math.max(m, i.id || 0), 0) + 1;
+    state.items.push({
+      id: nextId,
+      title: '',
+      userDetails: '',
+      type: '',
+      priority: 'No',
+      page: '',
+      feature: '',
+      roles: [],
+      status: 'Outstanding',
+      targetSprint: null,
+      sprintNumber: null,        // assigned when Complete Sprint bundles this item
+      lastSprintNumber: null,    // preserved when sent back from QA, used by QA Failed badge
+      dateAdded: todayISO(),
+      dateVerified: null,
+      claudeResponse: ''
+    });
+    filters.statusTab = 'Outstanding';
+    render();
+    flashSaveStatus('saving', 'New item #' + nextId + ' added — click Save to write to disk.');
+    setTimeout(() => {
+      const titleSpan = document.querySelector('.item-panel[data-id="' + nextId + '"] .item-title');
+      if (titleSpan) startInlineEdit(nextId, 'title', titleSpan);
+    }, 40);
+  }
+
+  function deleteItem(id) {
+    if (!confirm('Delete item #' + id + '?')) return;
+    state.items = state.items.filter(i => i.id !== id);
+    render();
+    flashSaveStatus('saving', 'Unsaved — click Save to write to disk.');
+  }
+
+  function toggleItemPriority(id) {
+    const item = state.items.find(i => i.id === id);
+    if (!item) return;
+    if (item.status === 'Verified') return; // verified is fully locked
+    item.priority = item.priority === 'Yes' ? 'No' : 'Yes';
+    render();
+    flashSaveStatus('saving', 'Priority updated for #' + id + ' — click Save to write to disk.');
+  }
+
+  function updateField(id, field, value) {
+    const item = state.items.find(i => i.id === id);
+    if (!item) return;
+    // Block QA-failed items from moving back to Outstanding
+    if (field === 'status' && value === 'Outstanding' && item.qaFailed) return;
+    // Sprint-locked items can't change status via this path; Claude moves them via direct JSON edit
+    if (field === 'status' && item.sprintLocked && value !== item.status) return;
+    item[field] = value;
+    if (field === 'status') {
+      if (value === 'Verified') {
+        if (!item.dateVerified) item.dateVerified = todayISO();
+        item.qaFailed = false; // only Verified clears qaFailed
+      }
+      // Moving out of Current Sprint clears the CS-specific flags
+      if (value !== 'Current Sprint') {
+        item.approvedForBuild = false;
+        item.sprintLocked = false;
+      }
+      // Moving out of QA AND Current Sprint clears the pending review flag
+      if (value !== 'QA' && value !== 'Current Sprint') item.pendingClaudeReview = false;
+    }
+    render();
+    flashSaveStatus('saving', 'Edited #' + id + ' — click Save to write to disk.');
+  }
+
+  function toggleItemRole(id, role) {
+    const item = state.items.find(i => i.id === id);
+    if (!item) return;
+    if (item.status === 'Verified') return; // verified is fully locked
+    if (!item.roles) item.roles = [];
+    const idx = item.roles.indexOf(role);
+    if (idx >= 0) item.roles.splice(idx, 1);
+    else item.roles.push(role);
+    // If toggling roles makes the current page/feature ineligible, clear it (only when stage isn't locked)
+    if (item.status !== 'QA') {
+      const eligiblePages = getEligible(state.config.pages || [], item.roles);
+      if (item.page && !eligiblePages.find(p => p.name === item.page) && item.page !== 'All pages') item.page = '';
+      const eligibleFeatures = getEligible(state.config.features || [], item.roles);
+      if (item.feature && !eligibleFeatures.find(f => f.name === item.feature)) item.feature = '';
+    }
+    render();
+    flashSaveStatus('saving', 'Edited #' + id + ' — click Save to write to disk.');
+  }
+
+  function approveItem(id) {
+    const item = state.items.find(i => i.id === id);
+    if (!item) return;
+    if (item.status !== 'QA') return;
+    if (item.pendingClaudeReview) return; // can't approve while pending review
+    item.status = 'Verified';
+    item.pendingClaudeReview = false;
+    item.qaFailed = false;
+    if (!item.dateVerified) item.dateVerified = todayISO();
+    render();
+    flashSaveStatus('saving', '#' + id + ' approved → Verified — click Save to write to disk.');
+  }
+
+  function clearPendingReview(id) {
+    const item = state.items.find(i => i.id === id);
+    if (!item) return;
+    item.pendingClaudeReview = false;
+    render();
+    flashSaveStatus('saving', '#' + id + ' marked as reviewed — click Save to write to disk.');
+  }
+
+  // QA → Current Sprint with QA Failed tag (item bounces back to dev).
+  // Preserves pendingClaudeReview so the QA tester's feedback follows the item back.
+  // Saves the current sprintNumber to lastSprintNumber so the QA Failed badge can
+  // display which sprint the item came from (e.g., "QA Failed · Sprint N").
+  function sendBackToSprint(id) {
+    const item = state.items.find(i => i.id === id);
+    if (!item) return;
+    if (item.status !== 'QA') return;
+    if (item.sprintNumber != null) item.lastSprintNumber = item.sprintNumber;
+    item.sprintNumber = null;
+    item.status = 'Current Sprint';
+    item.qaFailed = true;
+    // pendingClaudeReview is preserved (don't clear)
+    item.approvedForBuild = false;
+    item.sprintLocked = false;
+    filters.statusTab = 'Current Sprint';
+    render();
+    flashSaveStatus('saving', '#' + id + ' sent back to Current Sprint (QA Failed) — click Save to write to disk.');
+  }
+
+  // Current Sprint Approve / Un-approve toggles.
+  function approveForBuild(id) {
+    const item = state.items.find(i => i.id === id);
+    if (!item) return;
+    if (item.status !== 'Current Sprint') return;
+    if (item.pendingClaudeReview) return;
+    if (item.sprintLocked) return;
+    item.approvedForBuild = true;
+    render();
+    flashSaveStatus('saving', '#' + id + ' approved for build — click Save to write to disk.');
+  }
+  function unapproveForBuild(id) {
+    const item = state.items.find(i => i.id === id);
+    if (!item) return;
+    if (item.status !== 'Current Sprint') return;
+    if (item.sprintLocked) return;
+    item.approvedForBuild = false;
+    render();
+    flashSaveStatus('saving', '#' + id + ' un-approved — click Save to write to disk.');
+  }
+
+  // Bundle approved items into a numbered sprint group.
+  // - Only APPROVED items (approvedForBuild && !pendingClaudeReview && !already in a group) get bundled.
+  // - Non-approved items remain ungrouped in Current Sprint for the next sprint's work.
+  // - Bundled items are sprint-locked (read-only) and stay in Current Sprint until Claude
+  //   moves them to QA via the build plan. They keep their sprintNumber as they move stages.
+  // - The next sprint number auto-increments and is also editable on each group header.
+  function completeSprint() {
+    const csItems = state.items.filter(i => i.status === 'Current Sprint');
+    if (csItems.length === 0) { alert('No items in Current Sprint to complete.'); return; }
+    const bundlable = csItems.filter(i => i.approvedForBuild && !i.pendingClaudeReview && i.sprintNumber == null);
+    if (bundlable.length === 0) {
+      alert('No approved items available to bundle. Approve items first, then complete the sprint.');
+      return;
+    }
+    const n = state.config.nextSprintNumber || 30;
+    const ungroupedRemaining = csItems.length - bundlable.length - csItems.filter(i => i.sprintNumber != null).length;
+    const remainingNote = ungroupedRemaining > 0
+      ? '\n\n' + ungroupedRemaining + ' non-approved item(s) will remain unbundled in Current Sprint for next sprint.'
+      : '';
+    if (!confirm('Bundle ' + bundlable.length + ' approved item(s) into Sprint ' + n + '? They will be sprint-locked and Claude will move them to QA via the build plan.' + remainingNote)) return;
+    bundlable.forEach(it => {
+      it.sprintNumber = n;
+      it.sprintLocked = true;
+    });
+    state.config.nextSprintNumber = n + 1;
+    render();
+    flashSaveStatus('saving', bundlable.length + ' item(s) bundled into Sprint ' + n + ' — click Save to write to disk.');
+  }
+
+  // ---------- Popover (custom dropdown) ----------
+  function closePopover() {
+    if (!openPopover) return;
+    openPopover = null;
+    popoverSearch = '';
+    render();
+  }
+  function selectPopoverOption(event, itemId, field, value) {
+    if (event) event.stopPropagation();
+    updateField(itemId, field, value);
+    closePopover();
+  }
+  function onPopoverSearchInput(event, value) {
+    if (event) event.stopPropagation();
+    popoverSearch = value;
+    if (!openPopover) return;
+    const item = state.items.find(i => i.id === openPopover.itemId);
+    if (!item) return;
+    const listEl = document.getElementById('popover-list');
+    const footerEl = document.getElementById('popover-footer');
+    if (listEl) listEl.innerHTML = renderPageFeatureList(item, openPopover.field);
+    if (footerEl) {
+      const totalArr = openPopover.field === 'page' ? (state.config.pages || []) : (state.config.features || []);
+      const eligible = getEligible(totalArr, item.roles || []);
+      const filtered = popoverSearch ? eligible.filter(x => x.name.toLowerCase().includes(popoverSearch.toLowerCase())) : eligible;
+      const roleFilterApplied = (item.roles || []).length > 0;
+      const label = openPopover.field === 'page' ? 'pages' : 'features';
+      footerEl.textContent = roleFilterApplied
+        ? `Roles filter applied · ${filtered.length} of ${totalArr.length} ${label}`
+        : `${filtered.length} of ${totalArr.length} ${label}`;
+    }
+  }
+  function onPopoverInputKeydown(event) {
+    event.stopPropagation();
+    if (event.key === 'Escape') { event.preventDefault(); closePopover(); }
+  }
+  function onAddFeatureKeydown(event, itemId) {
+    event.stopPropagation();
+    if (event.key !== 'Enter') return;
+    event.preventDefault();
+    const newName = (event.target.value || '').trim();
+    if (!newName) return;
+    const item = state.items.find(i => i.id === itemId);
+    if (!item) return;
+    const existing = (state.config.features || []).find(f => f.name === newName);
+    if (!existing) {
+      const newRoles = (item.roles && item.roles.length) ? [...item.roles] : [...(state.config.roles || [])];
+      state.config.features.push({ name: newName, roles: newRoles });
+    }
+    item.feature = newName;
+    closePopover();
+    flashSaveStatus('saving', 'Added feature "' + newName + '" — click Save to write to disk.');
+  }
+
+  // Unified click handler — toggles popover triggers, ignores clicks inside open popover, closes on outside click.
+  document.addEventListener('click', function(e) {
+    const t = e.target;
+    if (!t || !t.closest) return;
+    // Click inside an open popover: option onclicks handle their own logic
+    if (t.closest('.field-popover')) return;
+    // Click on a popover trigger (pill / where-control)
+    const trigger = t.closest('[data-popover-field]');
+    if (trigger) {
+      const itemId = parseInt(trigger.getAttribute('data-popover-item'), 10);
+      const field = trigger.getAttribute('data-popover-field');
+      if (openPopover && openPopover.itemId === itemId && openPopover.field === field) {
+        closePopover();
+      } else {
+        openPopover = { itemId, field };
+        popoverSearch = '';
+        render();
+        if (field === 'page' || field === 'feature') {
+          setTimeout(() => {
+            const input = document.querySelector('.popover-search input');
+            if (input) input.focus();
+          }, 30);
+        }
+      }
+      return;
+    }
+    // Click anywhere else closes the popover
+    if (openPopover) closePopover();
+  });
+  document.addEventListener('keydown', function(e) {
+    if (e.key === 'Escape' && openPopover) closePopover();
+  });
+
+  // ---------- Status move (forward/back shortcut) ----------
+  function moveStage(id) {
+    const item = state.items.find(i => i.id === id);
+    if (!item) return;
+    if (item.status === 'Verified') return; // verified is fully locked
+    if (item.sprintLocked) return; // sprint-locked items can't be moved via this button
+    const isOutstanding = (item.status || 'Outstanding') =

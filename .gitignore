@@ -1,0 +1,15 @@
+# Kit-internal bookkeeping that should NOT be published to the kit's public GitHub repo.
+# These files live in this folder for convenience (so they sit next to the kit they describe),
+# but they're meta-records about the kit's own lifecycle, not template content for downstream apps.
+
+# Records every sync of process improvements from the upstream Engage planning workflow
+# into this kit. Engage-internal bookkeeping; not useful or appropriate for public consumption.
+STARTER-KIT-SYNC-LOG.md
+
+# Local-only secrets that should never be committed (defense-in-depth — these patterns
+# shouldn't exist in this folder, but listing them prevents accidents).
+*.env
+*.env.local
+.env*
+secrets/
+CREDENTIALS.md

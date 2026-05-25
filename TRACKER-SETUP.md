@@ -182,6 +182,15 @@ JSONbin's free tier includes:
 
 For a typical solo dev / small team, the planning tracker's request volume is well under the free tier limit. Each Cowork planning conversation does ~1 read + 1 write. Each tracker UI interaction is one request. Even a busy month (50 conversations + 500 UI interactions) is well under 10,000.
 
+### ⚠️ Bin-size ceiling — plan ahead
+
+JSONbin Free plan caps each record at **100 KB**. Trackers with 60+ items and active comment threads will hit this ceiling. Two paths:
+
+1. **Upgrade to JSONbin Pro** ($5/mo, 1 MB record cap).
+2. **Archive completed items** to a separate "archive" bin periodically. Keep the live bin lean.
+
+The current tracker schema (`comments[]` array, no duplicated text in legacy fields) was designed to maximize free-tier headroom — a duplicated-text approach hit the ceiling at ~40 items in early testing.
+
 If you exceed the free tier, JSONbin paid plans start at $5/month for 1M requests + larger bin size.
 
 ---

@@ -311,4 +311,22 @@ The kit was assembled from the upstream source project's planning workflow at a 
 
 ## Kit governance + upstream sync
 
-This kit is maintained from a private upstream project that d
+This kit is maintained from a private upstream project that drives ongoing improvements. The relationship is **strictly one-directional**:
+
+- **Upstream → kit:** Improvements (new rules, refined conventions, new sub-agents, bug fixes) flow from the upstream project's sprint planning sessions into this kit. Roughly once per sprint, the upstream's planning workflow runs a kit-sync check, identifies generalizable improvements from the conversation, and pushes them here.
+- **Kit → downstream apps:** When you copy the kit into a new project, that project owns its local copy. Your local edits stay local. To pick up kit improvements made upstream, you re-pull (or re-copy) the kit's latest published state and reconcile with your local customizations.
+- **App-specific content NEVER flows INTO the kit.** This is intentional. The kit must stay generic so it remains useful across many projects. Domain-specific terms, business logic, customer data, secrets, and project-specific examples are scrubbed at the upstream sync boundary and never land in this repo.
+
+**Why this matters for you (as a kit user):**
+
+- The kit you cloned is a snapshot at a point in time. The upstream may have added new rules since you cloned. Periodically re-check this repo for updates — or set up a sync script in your project that pulls the latest kit content into your `planning/` folder without overwriting your project-specific files (e.g., your `PROJECT-VISION.md`, your sprint folders, your tracker config).
+- If you fork the kit and customize it, your fork diverges from upstream. That's fine — but you lose the automatic improvement flow. Decide consciously whether to track upstream or fork.
+- If you contribute back, the path is: open an issue or discussion on this repo describing the convention you want added. The upstream maintainer will evaluate whether it generalizes to other projects (most improvements do; some are too domain-specific to land here). Direct PRs are welcome but evaluation happens through the upstream's planning process, not a quick merge.
+
+**The kit's audit trail:** Each upstream sync into this kit is logged in `STARTER-KIT-SYNC-LOG.md` (in this folder, gitignored from the public mirror but visible to the upstream maintainer). The kit's own construction history is in `STARTER-KIT-BUILD-PLAN.md` for anyone curious about how the kit was assembled.
+
+---
+
+## Ready to start
+
+→ Read [`PLATFORM-SETUP.md`](./PLATFORM-SETUP.md) (Step 2 of Quick Start).

@@ -22,12 +22,17 @@ This template is the PLANNING-phase mirror of `_sprint-templates/KICKOFF-PROMPT.
 
 # Cowork Planning Kickoff — paste this into a fresh Cowork chat
 
-> The prompt below assumes the **Planning Tracker** has already been seeded — i.e., the
-> previous Cowork session (or you, manually) clicked "Complete Sprint" in the tracker UI
-> at `PLANNING-TRACKER-TEMPLATE.html`, which bundled approved Current Sprint items into a
-> numbered Sprint group with `sprintLocked: true`. That action is what the planning
-> conversation is operating on. If the tracker has no sprint-locked items, Cowork will
-> say so and ask you to either bundle some via the UI or scope this sprint freeform.
+> The prompt below assumes the **Planning Tracker** has at least one item in **Current
+> Sprint** that you've **approved** (via the Approve button) AND **confirmed via
+> comment** (your last comment on the item is the user's word per the K1-P4 comment-
+> thread model). Cowork reads those user-confirmed items as the sprint's input scope —
+> no Complete Sprint click required. (The Complete Sprint button still works for users
+> who prefer the bundle-now UI action, but Cowork's planning flow no longer depends
+> on it.)
+>
+> If the tracker has no user-confirmed items at STEP 0, Cowork will halt and tell you
+> so. You can either approve + comment on items in the planner UI, or scope this
+> sprint freeform without the tracker.
 >
 > **One-time human prep:** none. Type one short opener line, paste the prompt block.
 
@@ -44,23 +49,53 @@ Before reading anything else, follow PLANNING-TRACKER-GUIDE.md to read the track
 via the JSONbin REST API. Credentials live in the project's secrets file (e.g.,
 CREDENTIALS.md, under the tracker section).
 
-From the tracker, derive the sprint number for this planning session:
+From the tracker, derive the sprint number AND the scope items for this planning session.
 
-  - Look at items where status == "Current Sprint" AND sprintLocked == true.
-  - Their `sprintNumber` field is the sprint we're planning. (All sprint-locked items in
-    Current Sprint share the same sprintNumber by design — that's what Complete Sprint did.)
-  - If multiple distinct sprintNumbers appear among sprint-locked items, halt and ask
-    me which one is the planning target.
-  - If NO items are sprint-locked, halt and tell me. I'll either bundle items via the
-    tracker UI or scope this sprint freeform.
-  - If I named a specific sprint number in my opener (e.g., "I'm planning Sprint N,
-    override"), use my number — but flag the override in your first response so I know
-    the tracker disagrees.
+A) Identify CONFIRMED scope items (K1-P5 workflow — comment-thread + approval derived).
 
-The sprint number you derived above is THIS sprint's number for everything that follows:
-sprint folder name (`<N> - <theme>/`), feature branch (`feature/sprint-<N>-<short-name>`),
-release version target (`v0.<N>.0-alpha.1` or your project's chosen scheme), and any
-runner script names.
+   Read items where ALL of the following hold:
+     - itemType is "qa-item" OR missing (treat missing as "qa-item" per K1 schema)
+     - status == "Current Sprint"
+     - approvedForBuild === true
+     - comments[last].author === "user"           ← user's last word seals their input
+
+   These are the "user-confirmed" items — the user has approved them AND signed off
+   on the discussion thread. They become THIS sprint's input scope.
+
+   Legacy v1 fallback: if an item has no `comments` array, treat
+   `pendingClaudeReview === false && approvedForBuild === true` as the v1 equivalent
+   of the comments-derived signal (the pre-K1 workflow). v1 + v2 items can coexist in
+   the same Current Sprint pool during the K1 → K2 grace period.
+
+   If NO items match, halt and tell me. I'll either approve items in the planner UI
+   (and confirm via comment), or scope this sprint freeform without the tracker.
+
+   Also surface any in-flight Kit Sprints — list anything under `reference/kit-sprints/`
+   that has an active `Kit-Sprint-N-Build-Plan.md` so the user can see the parallel work
+   at a glance. Kit Sprints do NOT contribute to the Engage app sprint's scope (per
+   PROJECT-PLANNING.md §1.5.3 — Kit Sprints are EXCLUDED from the planner's build plan
+   card lifecycle), but the user benefits from a one-line cross-sprint reminder.
+
+B) Derive the sprint number for THIS planning session.
+
+   Priority order:
+     1. If I named a specific sprint number in my opener (e.g., "I'm planning Sprint N,
+        override"), use my number — flag the override in your first response.
+     2. Else: read `state.config.nextSprintNumber` from the tracker config. This is the
+        single source of truth for the next-to-be-numbered sprint.
+     3. Fallback (if `nextSprintNumber` is missing on a legacy bin): use the highest
+        existing `sprintNumber` + 1.
+
+   The sprint number you derived above is THIS sprint's number for everything that follows:
+   sprint folder name (`<N> - <theme>/`), feature branch (`feature/sprint-<N>-<short-name>`),
+   release version target (`v0.<N>.0-alpha.1` or your project's chosen scheme), and any
+   runner script names.
+
+   The new sprint's build plan card (posted at STEP 5) will use this number's group on
+   the planner. Auto-promotion at the prior sprint's Sprint Completion already moved a
+   queued Outstanding card into Current Sprint via the algorithm in
+   PROJECT-PLANNING.md §1.5.4 — if such a card exists, its `kickoffPrompt` is the
+   starting point this planning session refines.
 
 ═══════════════════════════════════════════════════════════════
 STEP 1 — READ STANDARDS + CONTEXT
@@ -168,6 +203,54 @@ STEP 4 — AFTER MY FREEFORM ANSWER
        - <N> - <theme>/KICKOFF-PROMPT.md  (copy from _sprint-templates/KICKOFF-PROMPT.md
          and search-and-replace the substitution markers)
        - <N> - <theme>/QA-CHECKLIST.md  (copy from _sprint-templates/QA-CHECKLIST.md)
+
+═══════════════════════════════════════════════════════════════
+TRACKER ETIQUETTE (comment thread vs reopen — when to escalate)
+═══════════════════════════════════════════════════════════════
+
+Once the comment thread + build plan card lifecycle are in play, every interaction
+between Cowork, Claude Code, and the user happens via the planner. These rules govern
+WHEN to use a quick comment vs. when to escalate to a full stage-change reopen — so
+threads don't become a free-for-all and stage transitions stay legible.
+
+  1. **Default: post a comment.** Most back-and-forth is just a comment. Cowork answers
+     a user clarification → post a `"cowork"` comment. User refines after Claude Code
+     shipped a prompt → post a `"user"` comment on the QA item. Claude Code follow-up
+     notes after a verification step → post a `"claude-code"` comment. No stage change.
+
+  2. **Escalate from comment → send-back-to-Current-Sprint when:**
+       - The QA item's acceptance criteria are NOT met (the build missed something
+         material, not just polish-tier rework).
+       - The fix requires another execution prompt, not an inline edit.
+       - A schema / migration / dependency change is required to address the comment.
+     The user fires this escalation via the planner's "Back to sprint" button on the
+     QA item. The item bounces to Current Sprint with `qaFailed: true`,
+     `lastSprintNumber: <prior sprintNumber>`, `sprintNumber: null`. Cowork picks it up
+     on the next planning conversation's STEP 0 read.
+
+  3. **Stay in comments when:**
+       - The change is a one-line copy edit, a single-property style tweak, or
+         documentation clarification (Claude Code can address with a single-file edit
+         in the same commit as the QA pass).
+       - The user is asking a question, not requesting a code change.
+       - The build plan's acceptance criteria are met but the user wants a future
+         polish (file as a new Outstanding `qa-item` linked to this thread; don't
+         reopen the original).
+
+  4. **NEVER edit past comments.** Comments are append-only by schema design
+     (`PLANNING-TRACKER-GUIDE.md` § "Comment thread (`comments[]`)"). If a previous
+     comment turns out to be wrong, post a NEW comment that supersedes it and reference
+     the wrong one's timestamp. Editing in place would break the audit trail that
+     `pendingClaudeReview` auto-derivation depends on.
+
+  5. **Build-plan-card comments are for sprint-level discussion** (scope drift, sprint-
+     wide carryover questions, sprint-completion review). Per-prompt details belong on
+     the matching QA item's thread, not the build plan card.
+
+  6. **Cowork's posting cadence at STEP 5:** one comment per `qa-item` (synthesis of
+     the chat decision that produced this prompt), one comment on the build plan card
+     ("Sprint <N> build plan finalized. <synthesis>."). Don't pre-seed comments for
+     anticipated user feedback — let the user post first.
 
 ═══════════════════════════════════════════════════════════════
 BUILD-PLAN AUTHORING RULES (non-negotiable — STARTER-PROJECT-PLANNING.md §1.5)
@@ -296,21 +379,109 @@ Wait for my "yes" or further direction. Do NOT auto-advance to STEP 5 — the
 process-improvement check is its own gate.
 
 ═══════════════════════════════════════════════════════════════
-STEP 5 — WHEN PLANNING IS DONE
+STEP 5 — WHEN PLANNING IS DONE (sprint-type-aware: Engage app vs Kit Sprint)
 ═══════════════════════════════════════════════════════════════
 
-When I confirm planning is complete ("we're done planning" / "let's start building"):
+When I confirm planning is complete ("we're done planning" / "let's start building"),
+the next action depends on whether this is an Engage app sprint or a Kit Sprint.
 
-  1. Move the in-scope tracker items from Current Sprint to QA (per PLANNING-TRACKER-GUIDE
-     §4 step 8 + Common pattern "Move sprint-locked items into QA"):
-       - For each finalized item: set status: "QA", sprintLocked: false. PRESERVE
-         sprintNumber so the item stays in its Sprint N group on the QA tab.
-       - For items the build plan dropped or deferred: set sprintLocked: false,
-         sprintNumber: null, approvedForBuild: false, and note the deferral in
-         claudeResponse.
+═══════════════════════════════════════════════════════════════
+STEP 5 — SPRINT TYPE DETECTION (do this FIRST)
+═══════════════════════════════════════════════════════════════
+
+Detect the sprint type by looking at the sprint-folder pattern this planning conversation
+is producing:
+
+  - **Engage app sprint** — folder is `<N> - <theme>/` where `<N>` is a 1-999 integer
+    (e.g., `29 - Stripe Billing`, `30 - Carryover Polish`). Follow STEP 5A below.
+  - **Kit Sprint** — folder is `reference/kit-sprints/K<n> - <Short Theme>/` (e.g.,
+    `reference/kit-sprints/K1 - Planner Improvements`). The `K` prefix is the
+    discriminator. Follow STEP 5B below — Kit Sprints SKIP planner posting entirely.
+
+Reference: PROJECT-PLANNING.md §1.5.3 (Kit Sprint workflow) + §1.5.4 (Build plan card
+lifecycle — Engage app sprints only).
+
+═══════════════════════════════════════════════════════════════
+STEP 5A — ENGAGE APP SPRINT (post build plan card + per-prompt QA items)
+═══════════════════════════════════════════════════════════════
+
+For Engage app sprints (sprint-folder `<N> - <theme>/`, N in 1-999):
+
+  1. POST THE BUILD PLAN CARD ITSELF as a first-class planner item, per
+     PROJECT-PLANNING.md §1.5.4. PUT the bin with a new item that has:
+
+       {
+         id:                <next-available-id>,
+         itemType:          "build-plan",
+         title:             "Sprint <N> — <theme>",
+         shortDescription:  "<1-2 sentence subtitle from chat synthesis>",
+         kickoffPrompt:     "<full pastable kickoff prompt — the same text printed in
+                              step 4 below>",
+         promptCount:       <final number of execution prompts from build plan §6>,
+         sprintNumber:      <N>,
+         status:            <see stage-auto-selection rule below>,
+         queueOrder:        <see queueOrder rule below>,
+         comments:          [{
+           author:    "cowork",
+           timestamp: <now ISO>,
+           text:      "Sprint <N> build plan finalized. <synthesis from chat decision>."
+         }],
+         dateAdded:         <now ISO>,
+       }
+
+     **Stage auto-selection rule:**
+       - If NO other build-plan item is in `status === "Current Sprint"` → post this card
+         with `status: "Current Sprint"` and `queueOrder: null`.
+       - Else (a build plan is currently in Current Sprint — the active build) → post
+         this card with `status: "Outstanding"` and
+         `queueOrder = max(existing Outstanding build-plan queueOrders) + 1`. First-ever
+         Outstanding card gets `queueOrder = 1`.
+
+     The Outstanding card will auto-promote to Current Sprint at the prior sprint's
+     Sprint Completion via PROJECT-PLANNING.md §1.5.4's algorithm — no human action
+     needed at that point.
+
+  2. POST A QA ITEM for each completed build-plan prompt / mockup / surface. For each
+     unit of work the build plan describes (each prompt P1, P2, …, each mockup file,
+     each major surface), PUT the bin with a new item:
+
+       {
+         id:           <next-available-id>,
+         itemType:     "qa-item",
+         title:        "P<n> — <prompt title from build plan §6>",
+         sprintNumber: <N>,
+         status:       "QA",
+         type:         "<inferred from build plan: Feature | Bug | Polish | Refactor | UI>",
+         page:         "<page or surface the prompt targets, if applicable>",
+         feature:      "<feature group, if applicable>",
+         roles:        [<applicable role names from state.config.roles>],
+         priority:     "No",
+         comments:     [{
+           author:    "cowork",
+           timestamp: <now ISO>,
+           text:      "<synthesis from chat decision — what this prompt builds, why,
+                       acceptance criteria mirroring build plan>"
+         }],
+         dateAdded:    <now ISO>,
+       }
+
+     These QA items are seeded in advance so the user has a row to comment on as each
+     prompt ships. Claude Code does NOT have to post them at build time — the planner
+     already shows them as "QA · awaiting build" until the prompt actually merges.
+
+  3. MOVE PRIOR CONFIRMED ITEMS to the new sprint's QA group. For each item in scope
+     identified in STEP 0 (Current Sprint + approvedForBuild + comments[last]=user):
+       - Set `status: "QA"`, `sprintNumber: <N>`, `sprintLocked: false`.
+       - PRESERVE the existing `comments[]` (the discussion that produced this scope).
+       - Append one Cowork comment: "Bundled into Sprint <N> per planning conversation."
+     For items the build plan dropped or deferred:
+       - Set `sprintNumber: null`, `approvedForBuild: false`.
+       - Append a Cowork comment explaining the deferral + which future sprint it's
+         queued against (if known).
+
      Write the bin back via PUT.
 
-  2. Generate the build-phase kickoff prompt by copying _sprint-templates/KICKOFF-PROMPT.md
+  4. Generate the build-phase kickoff prompt by copying _sprint-templates/KICKOFF-PROMPT.md
      into <N> - <theme>/KICKOFF-PROMPT.md and search-and-replacing every substitution
      marker:
 
@@ -327,8 +498,46 @@ When I confirm planning is complete ("we're done planning" / "let's start buildi
                                      rule is satisfied trivially." OR sprint-specific
                                      schema note
 
-  3. Print the final filled-in kickoff prompt block in the chat so I can copy-paste it
+     The kickoff prompt text generated here goes into the build plan card's
+     `kickoffPrompt` field from step 1 above — they are the SAME text; the planner card
+     just gives it click-to-copy + queue-position chrome around the same content.
+
+  5. Print the final filled-in kickoff prompt block in the chat so I can copy-paste it
      into Claude Code to begin Phase 2 (development).
+
+═══════════════════════════════════════════════════════════════
+STEP 5B — KIT SPRINT (SKIP planner posting; append to STARTER-KIT-SYNC-LOG.md instead)
+═══════════════════════════════════════════════════════════════
+
+For Kit Sprints (sprint-folder `reference/kit-sprints/K<n> - <Short Theme>/`):
+
+  Kit Sprints do NOT participate in the planner's build plan card lifecycle (per
+  PROJECT-PLANNING.md §1.5.4 scope note + §1.5.3 Kit Sprint workflow). The planner is
+  reserved for Engage app sprint review — mixing Kit Sprint audit trails into the
+  planner would dilute focus and bloat the Outstanding queue.
+
+  At STEP 5 for a Kit Sprint:
+
+  1. **Do NOT POST any planner items.** No build plan card. No QA items. No bin write.
+
+  2. Generate the build-phase kickoff prompt the same way as Engage app sprints
+     (step 4 from STEP 5A above) — substitute markers in
+     `_sprint-templates/KICKOFF-PROMPT.md`, save to
+     `reference/kit-sprints/K<n> - <Short Theme>/KICKOFF-PROMPT.md`. The
+     `<branch>` substitution uses `kit-sprint-k<n>-<short-name>` instead of the
+     `feature/sprint-<N>-…` shape (Kit Sprints branch off `develop` per the
+     Kit Sprint convention).
+
+  3. Print the final filled-in kickoff prompt block in chat so I can paste it into
+     Claude Code.
+
+  4. **Remind me:** the Kit Sprint's audit trail will land in
+     `reference/cowork-app-starter/STARTER-KIT-SYNC-LOG.md` at sprint completion (the
+     final prompt of the Kit Sprint's build plan appends a sync-log entry listing what
+     changed + the publish commit SHA). The planner stays unchanged.
+
+  The Kit Sprint completion ritual is documented in `reference/kit-sprints/README.md`
+  § "Standard Kit Sprint completion ritual."
 ```
 
 ---
@@ -344,15 +553,26 @@ When I confirm planning is complete ("we're done planning" / "let's start buildi
   (rare — usually only when manually retrying a planning session), name it in your opener:
   "I'm planning Sprint N, override." Cowork uses your number and flags the disagreement.
 
-- **No tracker items? Halt path.** If no items have `sprintLocked: true` when STEP 0 runs,
-  Cowork will tell you and ask whether to (a) wait while you bundle items via the tracker
-  UI, or (b) scope this sprint freeform without the tracker. Most planning sessions will
-  go path (a).
+- **No tracker items? Halt path.** If no Current-Sprint items match the K1-P5
+  user-confirmed filter (`approvedForBuild === true && comments[last].author === "user"`,
+  or the v1 fallback `pendingClaudeReview === false && approvedForBuild === true`),
+  Cowork will tell you and ask whether to (a) wait while you approve + comment on items
+  in the planner UI, or (b) scope this sprint freeform without the tracker. Most
+  planning sessions will go path (a).
 
 - **What this prompt does NOT do:** it does not write code (that's Claude Code's job in
   Phase 2), it does not deploy anything (Phase 3), and it does not auto-decide scope —
-  the tracker's sprint-locked items + your freeform refinement drive scope together.
+  the tracker's user-confirmed items + your freeform refinement drive scope together.
+
+- **Engage app vs Kit Sprint at STEP 5:** STEP 5 branches on sprint-folder pattern.
+  Engage app sprints (`<N> - <theme>/`, N in 1-999) post a build plan card + per-prompt
+  QA items to the planner per `PROJECT-PLANNING.md §1.5.4`. Kit Sprints
+  (`reference/kit-sprints/K<n> - <Short Theme>/`) SKIP planner posting entirely and
+  audit via `STARTER-KIT-SYNC-LOG.md` instead per `PROJECT-PLANNING.md §1.5.3`.
 
 - **Cross-references:** the build-phase mirror is `_sprint-templates/KICKOFF-PROMPT.md`.
   Tracker conventions are in `PLANNING-TRACKER-GUIDE.md`. The Phase 1 rules this prompt
-  enforces all live in `STARTER-PROJECT-PLANNING.md` §1.0.1 through §1.8.
+  enforces all live in `STARTER-PROJECT-PLANNING.md` §1.0.1 through §1.8. The build
+  plan card lifecycle is documented in `STARTER-PROJECT-PLANNING.md §1.5.2`
+  (Engage app sprints only — Kit Sprints are excluded per §1.5.3 in projects that
+  have it).

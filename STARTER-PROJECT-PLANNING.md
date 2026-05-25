@@ -448,6 +448,72 @@ The process-improvement check at planning end is the lightweight counter-pressur
 - §1.5 "Tag convention" — the per-rule tag system this check uses to filter candidates
 - `STARTER-KIT-SYNC-LOG.md` — the kit's own quarterly-batch sync mechanism (complement to this per-sprint check)
 
+### 1.5.2 Build plan card lifecycle (planning-process improvement — K1-P5 codification of planner stage flow)
+
+> **Scope:** This lifecycle applies to **<EXAMPLE: your project's app sprints>** (sprintNumber 1-999 in the planner). **Kit-fork sprints** (if your project maintains its own kit fork — typically with `K<n>` sprint-folder prefixes) do NOT participate; their completion is audited in `STARTER-KIT-SYNC-LOG.md` instead of the planner. Most downstream projects do not need a Kit Sprint workflow — this scope note is here for projects that grow into kit-maintainer roles.
+
+Every sprint has a **build plan card** posted to the planner (`PLANNING-TRACKER-TEMPLATE.html`) alongside its individual QA items. The card carries the sprint's kickoff prompt (with click-to-copy), the short description, and the promotion stage. It moves through four stages over the sprint's lifetime; the planner UI groups it with its sprint's QA items at every stage.
+
+**Stages (in order).**
+
+| Stage | Meaning | Who transitions in | When |
+|---|---|---|---|
+| **Outstanding** | Planned, queued, not yet building | Cowork on plan finalize (`COWORK-PLANNING-KICKOFF.md` STEP 5A step 1) | At planning end IF Current Sprint stage is occupied. `queueOrder` auto-assigned to next-highest available integer. |
+| **Current Sprint** | Active build in progress | Cowork on plan finalize IF Current Sprint stage is empty; else Claude Code at Sprint Completion of the prior Current-Sprint card (auto-promotion from Outstanding) | At planning end OR at prior sprint's Sprint Completion. |
+| **QA** | Build shipped, awaiting human review | Claude Code at Sprint Completion (per `DEPLOYMENT-WORKFLOW.md` release process) | When the merge to the deployment branch completes and the sprint is declared done. |
+| **Verified** | Reviewed + approved | User clicks Verify in the planner | After user reviews all QA items in the sprint group and approves the build plan card. |
+
+**Auto-promotion algorithm (Claude Code, at Sprint Completion).**
+
+The Outstanding-stage build plan card with the lowest `queueOrder` is auto-promoted to Current Sprint when the prior Current-Sprint card moves to QA. The planner stores items in JSONbin (not SQL), but the semantics are SQL-shaped:
+
+```sql
+-- Step 1: move the now-completed sprint's card from Current Sprint → QA
+UPDATE items SET status = 'QA'
+WHERE itemType = 'build-plan'
+  AND status   = 'Current Sprint'
+  AND id       = :completedSprintCardId;
+
+-- Step 2: promote the next queued card (lowest queueOrder wins)
+UPDATE items SET status = 'Current Sprint', queueOrder = NULL
+WHERE id = (
+  SELECT id FROM items
+  WHERE itemType = 'build-plan' AND status = 'Outstanding'
+  ORDER BY queueOrder ASC
+  LIMIT 1
+);
+
+-- Step 3: re-pack the remaining Outstanding queue (shift everyone down by 1)
+UPDATE items SET queueOrder = queueOrder - 1
+WHERE itemType = 'build-plan' AND status = 'Outstanding';
+```
+
+The auto-promotion is deterministic — no halt-and-ask. If no Outstanding card exists, Current Sprint stays empty until the next planning conversation posts one. The PUT-equivalent pattern in JSON lives in `PLANNING-TRACKER-GUIDE.md` § "Promote the next queued build plan card to Current Sprint."
+
+**Queue order semantics.**
+
+- `queueOrder` is an integer present ONLY on build plan cards in the **Outstanding** stage. Lower = promoted first; `queueOrder = 1` is "up next."
+- Cowork auto-assigns `queueOrder` on post (highest existing value + 1; first ever = 1) — see `COWORK-PLANNING-KICKOFF.md` STEP 5A step 1.
+- The user may reorder via the planner UI — up/down arrows (K1-P4) and drag-to-reorder (deferred to K2 per K1 build plan §4).
+- Claude Code consumes `queueOrder` at Sprint Completion via the algorithm above.
+
+**Responsibility matrix.**
+
+| Transition | Trigger | Actor | Mechanism |
+|---|---|---|---|
+| (none) → Outstanding | Plan finalized in Cowork, Current Sprint stage NOT empty | Cowork | STEP 5A posts via JSONbin PUT, auto-assigned `queueOrder` |
+| (none) → Current Sprint | Plan finalized in Cowork, Current Sprint stage empty | Cowork | STEP 5A selects this stage instead of Outstanding |
+| Outstanding → Current Sprint | Prior Current Sprint moved to QA | Claude Code | Sprint Completion step (post-merge); lowest `queueOrder` wins; re-packs remaining queue |
+| Current Sprint → QA | Merge to deployment branch completed + Sprint Completion declared | Claude Code | Sprint Completion step (per `DEPLOYMENT-WORKFLOW.md`) |
+| QA → Verified | User reviews all QA items in the group and approves the build plan card | User | Planner UI Verify button |
+
+**Cross-references:**
+- `PLANNING-TRACKER-GUIDE.md` § "3c. Build plan card lifecycle" — tracker-shape concerns (schema, post pattern, promotion ritual)
+- `_sprint-templates/COWORK-PLANNING-KICKOFF.md` § STEP 5A — Cowork's post-on-plan-finalize behavior (build plan card + per-prompt QA items)
+- `_sprint-templates/COWORK-PLANNING-KICKOFF.md` § STEP 5B — Kit-fork-sprint SKIP path (audit via `STARTER-KIT-SYNC-LOG.md` instead)
+- `DEPLOYMENT-WORKFLOW.md` § Sprint Completion — the trigger point for Current Sprint → QA auto-promotion
+- `<EXAMPLE: reference/kit-sprints/K1 - Planner Improvements/mockups/build-plan-card.html>` — visual mockup of the card at each stage (lives in the kit-source repo; downstream projects may not have this folder)
+
 ### 1.6 Scope boundary
 
 Every build plan must include a **Scope boundary** section that explicitly states what is NOT included in this sprint.
@@ -686,4 +752,75 @@ Before ANY deployment, Claude Code must first read `DEPLOYMENT-WORKFLOW.md`. Fol
 | 5 | Are there any BREAKING CHANGES? |
 | 6 | Should this be merged back to develop? |
 
-**Execution steps
+**Execution steps differ by Question 0 answer. Follow your DEPLOYMENT-WORKFLOW.md for the platform-specific procedure.**
+
+### 3.5 Post-deployment verification
+
+See `DEPLOYMENT-WORKFLOW.md` for platform-specific post-deploy checks.
+
+### 3.6 Rollback
+
+See `DEPLOYMENT-WORKFLOW.md` for platform-specific rollback procedures.
+
+### 3.6.1 Hardcoded merge step — Claude Code merges, never the user
+
+**Rule:** Every sprint's "Sprint Completion" step must include an EXPLICIT, hardcoded `gh pr merge` command (or your project's equivalent). The user does not click Merge. Claude Code does the merge as part of the completion sequence.
+
+The exact sequence:
+
+```bash
+# 1. Push feature branch
+git push -u origin <BRANCH>
+
+# 2. Open PR (or fetch existing PR number)
+gh pr create --base develop --head <BRANCH> --title "..." --body "..."
+
+# 3. Merge — do NOT wait for auto-merge, do NOT use --auto flag
+gh pr merge <BRANCH> --merge --delete-branch
+
+# 4. Verify merge state
+gh pr view "$PR_NUMBER" --json state -q '.state'   # must equal "MERGED"
+```
+
+### 3.7 Branch sync cadence — mandatory back-merge after every release
+
+After a release PR merges `develop → main` (or `release/* → main`), open a **back-merge PR** immediately: `main → develop`. This keeps develop as a strict superset of main, so future feature branches fork from a correct baseline.
+
+**Rule:** A sprint is not "shipped" until both the release PR is merged AND the back-merge PR is merged.
+
+---
+
+## Quick reference checklists
+
+### Cowork — planning phase
+
+```
+☐ Read this file (PROJECT-PLANNING.md)
+☐ Codebase orientation — read README, schema, module registry, existing components
+☐ Create numbered sprint sub-folder
+☐ Create and iterate on mockups with user
+☐ Save approved mockups into sprint folder
+☐ Read BEFORE-LAUNCH-CHECKLIST.md, surface the next-most-relevant open item, ask the user yes/no/defer
+☐ Write build plan with all required sections (architecture, schema, specs, impact map, scope boundary, build sequence)
+☐ Apply §1.5 sub-rules (codebase-grep, cross-sprint compatibility, pre-flight read-only, Playwright coverage, Reviewer coverage, Security threat-modeling)
+☐ Confirm user says planning is done
+☐ Generate the kickoff prompt for Claude Code
+```
+
+### Claude Code — development phase
+
+```
+☐ Read PROJECT-PLANNING.md
+☐ Read the sprint's build plan end to end
+☐ Confirm understanding of full scope, prompt count, and scope boundaries
+☐ Execute prompts sequentially
+☐ After each prompt:
+    ☐ Run VERIFY (automated QA + sub-agent review) — fix all failures
+    ☐ Run COMPARE (mockup comparison) — fix all differences
+    ☐ Provide MANUAL QA TABLE — wait for user confirmation
+☐ After all prompts complete:
+    ☐ Read DEPLOYMENT-WORKFLOW.md before deploying
+    ☐ Follow deployment process (Phase 3)
+    ☐ Ask Questions 0-6 before deploying
+    ☐ Verify deployment succeeds
+```

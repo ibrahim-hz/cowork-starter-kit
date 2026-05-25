@@ -77,4 +77,7 @@ A decision often spawns ALL THREE: file the ADR for the rationale, add the lint 
 
 ## Cross-reference
 
-- [`INDEX.md`](./INDEX.md) — 
+- [`INDEX.md`](./INDEX.md) — index of all ADRs
+- [`_template.md`](./_template.md) — template for new ADRs
+- [`../STARTER-PROJECT-PLANNING.md`](../STARTER-PROJECT-PLANNING.md) §1.2.2 — Architectural decisions (planning-time integration)
+- [`../STARTER-CLAUDE-CODE-RUNBOOK.md`](../STARTER-CLAUDE-CODE-RUNBOOK.md) — operational counterpart for production incidents

@@ -19,6 +19,11 @@
     --purple-bg: #ede9fe; --purple-fg: #5b21b6; --purple-border: #c4b5fd;
     --gray-bg: #f3f4f6; --gray-fg: #4b5563;
     --edit-bg: #fffbeb; --edit-border: #fbbf24;
+    /* K1-P4 — build plan card (indigo gradient surface, distinct from QA item cards) */
+    --buildplan-bg: linear-gradient(135deg, #eef4ff 0%, #f0f4ff 100%);
+    --buildplan-border: #c7d2fe;
+    --buildplan-accent: #4f46e5;
+    --buildplan-tint: #4338ca;
   }
   * { box-sizing: border-box; }
   body {
@@ -687,6 +692,374 @@
   }
   .empty-state h3 { margin: 0 0 6px 0; font-size: 14px; color: var(--text); font-weight: 600; }
   .empty-state p { margin: 0; font-size: 13px; }
+
+  /* ====================================================================
+     K1-P2 — mockup-link + copy-toast (engage-mockup:// click handler UI)
+     ==================================================================== */
+  .mockup-link {
+    color: var(--info-fg, #1e40af);
+    text-decoration: underline;
+    text-decoration-style: dotted;
+    text-underline-offset: 2px;
+    cursor: pointer;
+  }
+  .mockup-link:hover {
+    text-decoration-style: solid;
+    background: rgba(30, 64, 175, 0.06);
+    border-radius: 2px;
+    padding: 0 2px;
+    margin: 0 -2px;
+  }
+
+  .copy-toast {
+    position: fixed;
+    bottom: 20px;
+    right: 20px;
+    background: #1f2937;
+    color: #e5e7eb;
+    border-radius: 8px;
+    padding: 12px 14px;
+    min-width: 280px;
+    max-width: 380px;
+    box-shadow: 0 8px 28px rgba(0, 0, 0, 0.25);
+    font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+    font-size: 12.5px;
+    line-height: 1.4;
+    z-index: 9999;
+    opacity: 0;
+    transform: translateY(8px);
+    transition: opacity 250ms ease, transform 250ms ease;
+    pointer-events: auto;
+  }
+  .copy-toast.visible {
+    opacity: 1;
+    transform: translateY(0);
+  }
+  .copy-toast-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    gap: 8px;
+    margin-bottom: 6px;
+  }
+  .copy-toast-title {
+    font-weight: 600;
+    font-size: 12.5px;
+    color: #f9fafb;
+  }
+  .copy-toast-close {
+    background: transparent;
+    color: #9ca3af;
+    border: 0;
+    font-size: 18px;
+    line-height: 1;
+    cursor: pointer;
+    padding: 0 4px;
+    margin: -4px -4px -4px 0;
+    border-radius: 3px;
+  }
+  .copy-toast-close:hover {
+    color: #fff;
+    background: rgba(255, 255, 255, 0.08);
+  }
+  .copy-toast-url {
+    background: rgba(255, 255, 255, 0.08);
+    padding: 5px 8px;
+    border-radius: 4px;
+    font-family: 'JetBrains Mono', ui-monospace, SFMono-Regular, monospace;
+    font-size: 11px;
+    word-break: break-all;
+    margin-bottom: 6px;
+    user-select: all;
+    color: #f3f4f6;
+  }
+  .copy-toast-hint {
+    font-size: 11px;
+    color: #9ca3af;
+    line-height: 1.5;
+  }
+  .copy-toast-hint kbd {
+    display: inline-block;
+    background: rgba(255, 255, 255, 0.12);
+    border: 1px solid rgba(255, 255, 255, 0.18);
+    border-bottom-width: 2px;
+    border-radius: 3px;
+    padding: 0 5px;
+    font-size: 10px;
+    font-family: 'JetBrains Mono', ui-monospace, SFMono-Regular, monospace;
+    color: #f3f4f6;
+    margin: 0 1px;
+    line-height: 1.4;
+  }
+  /* === end K1-P2 === */
+
+  /* ====================================================================
+     K1-P4 — Comment thread + Build plan card UI (KIT-BOUNDARY EXCEPTION)
+     ====================================================================
+     Replaces the single userBlock+claudeBlock surface with a threaded
+     comment list. Adds a distinct .build-plan-card card variant for
+     items with itemType="build-plan" (gradient bg + dark code block for
+     the kickoff prompt + queue-position badge on Outstanding cards).
+     Mockup reference:
+       reference/kit-sprints/K1 - Planner Improvements/mockups/build-plan-card.html
+     */
+
+  /* ----- Comment thread (replaces .panel-body two-column layout) ----- */
+  .comment-thread {
+    margin-top: 6px;
+    display: flex; flex-direction: column; gap: 6px;
+  }
+  .comment-bubble {
+    background: var(--panel);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 8px 11px;
+    font-size: 12.5px; line-height: 1.5;
+    position: relative;
+  }
+  .comment-bubble.user     { background: #fffbeb; border-color: #fcd34d; }
+  .comment-bubble.cowork   { background: #f5f3ff; border-color: #c4b5fd; }
+  .comment-bubble.claude-code { background: #eff6ff; border-color: #93c5fd; }
+  .comment-meta {
+    display: flex; align-items: center; justify-content: space-between;
+    gap: 8px; margin-bottom: 4px;
+    font-size: 10px; text-transform: uppercase; letter-spacing: 0.4px; font-weight: 600;
+  }
+  .comment-author { color: var(--text); }
+  .comment-bubble.user .comment-author    { color: #92400e; }
+  .comment-bubble.cowork .comment-author  { color: #5b21b6; }
+  .comment-bubble.claude-code .comment-author { color: #1d4ed8; }
+  .comment-timestamp { color: var(--text-tertiary); font-weight: 500; letter-spacing: 0.2px; }
+  .comment-text {
+    color: var(--text); white-space: pre-wrap; word-wrap: break-word;
+  }
+  .comment-text a { color: inherit; text-decoration: underline; text-underline-offset: 2px; }
+  .comment-text a:hover { opacity: 0.85; }
+  .comment-text strong { font-weight: 700; }
+  .comment-text em { font-style: italic; }
+  .comment-text ul { margin: 4px 0 4px 18px; padding: 0; }
+  .comment-text li { margin: 2px 0; }
+  .comment-empty {
+    background: transparent; border: 1px dashed var(--border);
+    color: var(--text-tertiary); font-style: italic;
+    padding: 8px 11px; border-radius: 8px; font-size: 12px;
+  }
+  .comment-collapse-toggle {
+    background: transparent; border: 1px solid var(--border);
+    border-radius: 999px; padding: 3px 11px;
+    font-size: 11px; font-weight: 500; color: var(--text-secondary);
+    cursor: pointer; align-self: flex-start; font-family: inherit;
+  }
+  .comment-collapse-toggle:hover { background: var(--gray-bg); color: var(--text); }
+
+  /* ----- Comment input (Post button below thread) ----- */
+  .comment-input-row {
+    display: flex; gap: 6px; align-items: stretch;
+    margin-top: 6px;
+  }
+  .comment-input-row textarea {
+    flex: 1; min-height: 36px; max-height: 140px;
+    padding: 7px 10px; border: 1px solid var(--border); border-radius: 6px;
+    font-family: inherit; font-size: 12.5px; line-height: 1.5;
+    background: var(--panel); color: var(--text); resize: vertical;
+    outline: none;
+  }
+  .comment-input-row textarea:focus { border-color: #3b82f6; box-shadow: 0 0 0 3px #dbeafe; }
+  .comment-post-btn {
+    background: var(--info-bg); color: var(--info-fg);
+    border: 1px solid var(--info-border); border-radius: 6px;
+    padding: 0 14px; font-size: 12px; font-weight: 600;
+    cursor: pointer; font-family: inherit;
+    transition: background 0.12s;
+  }
+  .comment-post-btn:hover { background: #c4d8f8; }
+  .comment-post-btn:disabled { opacity: 0.5; cursor: not-allowed; }
+
+  /* ----- BUILD PLAN CARD (transcribed from mockup §52-117) ----- */
+  .build-plan-card {
+    background: var(--buildplan-bg);
+    border: 1.5px solid var(--buildplan-border);
+    border-radius: 12px;
+    padding: 14px 16px;
+    margin: 6px 0;
+    position: relative;
+  }
+  .build-plan-card .bpc-top {
+    display: flex; align-items: flex-start; justify-content: space-between; gap: 12px;
+  }
+  .build-plan-card .bpc-left { flex: 1; min-width: 0; }
+  .build-plan-card .bpc-badge-row {
+    display: flex; align-items: center; gap: 8px; margin-bottom: 6px;
+    flex-wrap: wrap;
+  }
+  .build-plan-card .bpc-badge {
+    display: inline-flex; align-items: center; gap: 4px;
+    background: var(--buildplan-accent); color: #fff;
+    font-size: 9.5px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.5px;
+    padding: 2px 8px; border-radius: 999px;
+  }
+  .build-plan-card .bpc-badge .icon { font-size: 9px; }
+  .build-plan-card .bpc-stage-tag {
+    font-size: 10px; font-weight: 600; color: var(--text-secondary);
+    text-transform: uppercase; letter-spacing: 0.4px;
+  }
+  .build-plan-card .bpc-prompt-count { font-size: 11px; color: var(--text-secondary); }
+  .build-plan-card .bpc-prompt-count strong { color: var(--text); font-weight: 600; }
+  .build-plan-card .bpc-title {
+    font-size: 14px; font-weight: 700; color: var(--text); line-height: 1.35;
+  }
+  .build-plan-card .bpc-title.placeholder { color: var(--text-tertiary); font-weight: 500; font-style: italic; }
+  .build-plan-card .bpc-desc { font-size: 12px; color: var(--text-secondary); margin-top: 4px; line-height: 1.5; }
+  .build-plan-card .bpc-right {
+    display: flex; align-items: center; gap: 6px; flex-shrink: 0;
+    flex-wrap: wrap; justify-content: flex-end;
+  }
+  .build-plan-card .bpc-toggle {
+    background: transparent; border: 1px solid var(--buildplan-border); border-radius: 5px;
+    padding: 4px 10px; font-size: 11px; font-weight: 600; color: var(--buildplan-tint);
+    cursor: pointer; display: inline-flex; align-items: center; gap: 4px;
+    font-family: inherit;
+  }
+  .build-plan-card .bpc-toggle:hover { background: rgba(79, 70, 229, 0.08); }
+  .build-plan-card .bpc-toggle .chev { font-size: 9px; }
+  .build-plan-card .bpc-prompt-body {
+    margin-top: 12px; padding-top: 12px; border-top: 1px solid var(--buildplan-border);
+  }
+  .build-plan-card .bpc-prompt-block {
+    background: #1f2937; color: #e5e7eb; border-radius: 6px;
+    padding: 12px 14px;
+    font-family: 'JetBrains Mono', ui-monospace, SFMono-Regular, monospace;
+    font-size: 11.5px; line-height: 1.55;
+    max-height: 260px; overflow-y: auto;
+    position: relative;
+    white-space: pre-wrap; word-wrap: break-word;
+  }
+  .build-plan-card .bpc-prompt-empty {
+    background: #f9fafb; color: var(--text-tertiary);
+    border: 1px dashed var(--border); border-radius: 6px;
+    padding: 12px 14px; font-size: 12px; font-style: italic;
+    text-align: center;
+  }
+  .build-plan-card .bpc-copy-btn {
+    position: absolute; top: 8px; right: 8px;
+    background: #374151; border: 1px solid #4b5563; color: #e5e7eb;
+    border-radius: 5px; padding: 4px 9px; font-size: 10.5px; font-weight: 500;
+    cursor: pointer; display: inline-flex; align-items: center; gap: 4px;
+    font-family: inherit;
+  }
+  .build-plan-card .bpc-copy-btn:hover { background: #4b5563; }
+  .build-plan-card .bpc-copy-btn.copied { background: var(--success-bg); color: var(--success-fg); border-color: transparent; }
+  .build-plan-card .bpc-prompt-footer {
+    font-size: 10.5px; color: var(--text-tertiary); margin-top: 8px;
+  }
+  .build-plan-card .bpc-comments {
+    margin-top: 14px; padding-top: 12px; border-top: 1px solid var(--buildplan-border);
+  }
+
+  /* ----- Queue order (Outstanding stage only — mockup §119-155) ----- */
+  .build-plan-card.queued { padding-left: 56px; }
+  .build-plan-card .queue-pos {
+    position: absolute; left: 12px; top: 14px; bottom: 14px;
+    width: 36px;
+    display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 4px;
+    background: rgba(79, 70, 229, 0.10);
+    border-radius: 6px;
+    padding: 4px 0;
+  }
+  .build-plan-card .queue-pos.up-next { background: var(--buildplan-accent); }
+  .build-plan-card .queue-pos .pos-num {
+    font-size: 18px; font-weight: 700; color: var(--buildplan-tint); line-height: 1;
+  }
+  .build-plan-card .queue-pos.up-next .pos-num { color: #fff; }
+  .build-plan-card .queue-pos .pos-label {
+    font-size: 8.5px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.5px;
+    color: var(--buildplan-tint); line-height: 1;
+    text-align: center;
+  }
+  .build-plan-card .queue-pos.up-next .pos-label { color: #fff; }
+  .build-plan-card .reorder-controls {
+    display: flex; flex-direction: column; gap: 2px; flex-shrink: 0;
+    margin-left: 4px;
+  }
+  .build-plan-card .reorder-btn {
+    background: transparent; border: 1px solid var(--buildplan-border); border-radius: 4px;
+    width: 22px; height: 18px; padding: 0; cursor: pointer;
+    color: var(--buildplan-tint); font-size: 10px;
+    display: flex; align-items: center; justify-content: center;
+    font-family: inherit;
+  }
+  .build-plan-card .reorder-btn:hover:not(:disabled) { background: rgba(79, 70, 229, 0.08); }
+  .build-plan-card .reorder-btn:disabled { opacity: 0.35; cursor: not-allowed; }
+  .build-plan-card .drag-handle {
+    cursor: grab; color: var(--text-tertiary); font-size: 14px;
+    padding: 0 4px; display: flex; align-items: center;
+    user-select: none;
+  }
+  .build-plan-card .drag-handle:hover { color: var(--buildplan-tint); }
+
+  /* ----- Queue breadcrumb (top of Outstanding stage, mockup §157-173) ----- */
+  .queue-breadcrumb {
+    background: var(--panel); border: 1px solid var(--border); border-radius: 8px;
+    padding: 10px 14px; margin-bottom: 12px;
+    display: flex; align-items: center; gap: 10px;
+    font-size: 11.5px; color: var(--text-secondary);
+    flex-wrap: wrap;
+  }
+  .queue-breadcrumb .label { font-size: 10px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.5px; color: var(--text-tertiary); }
+  .queue-breadcrumb .crumb {
+    display: inline-flex; align-items: center; gap: 4px;
+    padding: 3px 9px; border-radius: 999px;
+    font-weight: 500; color: var(--text);
+    background: var(--gray-bg);
+  }
+  .queue-breadcrumb .crumb.current { background: var(--success-bg); color: var(--success-fg); font-weight: 600; }
+  .queue-breadcrumb .crumb.next { background: var(--buildplan-accent); color: #fff; font-weight: 600; }
+  .queue-breadcrumb .arrow { color: var(--text-tertiary); font-size: 11px; }
+  .queue-breadcrumb .reorder-hint { margin-left: auto; font-size: 10.5px; color: var(--text-tertiary); }
+  /* === end K1-P4 === */
+
+  /* ====================================================================
+     K1-P3 — Single-click mockup-link installer section (setup panel)
+     ==================================================================== */
+  .setup-divider {
+    border-top: 1px solid var(--info-border);
+    margin: 18px 0 12px;
+    opacity: 0.6;
+  }
+  .setup-section { margin-top: 4px; }
+  .setup-section-title {
+    margin: 0 0 6px;
+    font-size: 14px;
+    color: var(--info-fg);
+    font-weight: 600;
+  }
+  .setup-section-intro {
+    font-size: 12.5px;
+    color: var(--info-fg);
+    margin: 0 0 10px;
+    line-height: 1.5;
+  }
+  .setup-section-intro code {
+    background: rgba(30, 64, 175, 0.08);
+    padding: 1px 5px;
+    border-radius: 3px;
+    font-family: 'JetBrains Mono', ui-monospace, SFMono-Regular, monospace;
+    font-size: 11.5px;
+  }
+  .setup-section-note {
+    font-size: 11.5px;
+    color: var(--info-fg);
+    opacity: 0.85;
+  }
+  .setup-section-note #install-os-detected { font-weight: 600; }
+  #install-status code {
+    background: rgba(30, 64, 175, 0.08);
+    padding: 1px 5px;
+    border-radius: 3px;
+    font-family: 'JetBrains Mono', ui-monospace, SFMono-Regular, monospace;
+    font-size: 11.5px;
+  }
+  /* === end K1-P3 === */
 </style>
 </head>
 <body>
@@ -736,6 +1109,24 @@
         <button class="btn-icon setup-disconnect" onclick="disconnectBin()" title="Disconnect from current bin">Disconnect</button>
       </div>
       <div id="setup-status" class="setup-status"></div>
+    </div>
+
+    <!-- K1-P3 — single-click local mockup link installer -->
+    <div class="setup-divider"></div>
+    <div class="setup-section" id="install-handler-section">
+      <h3 class="setup-section-title">Single-click local mockup links <span class="setup-optional">(optional)</span></h3>
+      <p class="setup-section-intro">
+        Install the <code>engage-mockup://</code> protocol handler so clicking a <code>file://</code> mockup URL
+        in the tracker opens it directly in your browser. Without the handler the tracker still works — clicks
+        copy the URL to clipboard and show a paste-hint toast instead.
+      </p>
+      <div class="setup-actions">
+        <button class="btn-primary" onclick="downloadProtocolHandler()">
+          Install for <span id="install-os-name">your OS</span>
+        </button>
+        <span class="setup-section-note">Detected: <span id="install-os-detected">…</span></span>
+      </div>
+      <div id="install-status" class="setup-status"></div>
     </div>
   </div>
 
@@ -835,6 +1226,13 @@
   let popoverSearch = '';
   // Sprint group collapsed-state (per browser session, not persisted to JSONbin).
   let collapsedSprintGroups = new Set();
+  // K1-P4 — UI-only state Sets keyed by item.id (cleared on render is unnecessary;
+  // ids are stable). expandedThreads: per-item flag for "show earlier comments";
+  // expandedKickoffs: per-item flag for build-plan card kickoff-prompt visibility;
+  // recentlyCopiedKickoff: tracks the 2s "✓ Copied" state on the copy button.
+  let expandedThreads = new Set();
+  let expandedKickoffs = new Set();
+  let recentlyCopiedKickoff = new Set();
 
   function flashSaveStatus(cls, msg) { const el = document.getElementById('save-status'); el.textContent = msg; el.className = 'save-status ' + cls; }
 
@@ -1031,6 +1429,10 @@
       document.getElementById('setup-api-key').value = cfg.apiKey || '';
       document.getElementById('setup-bin-id').value = cfg.binId || '';
     }
+    // K1-P3 — populate the install-handler OS labels when the panel opens
+    // (deferred to here rather than DOMContentLoaded so the values reflect
+    // the current navigator state every time the panel is reopened).
+    if (typeof updateInstallOSLabels === 'function') updateInstallOSLabels();
   }
   function hideSetupPanel() {
     const panel = document.getElementById('setup-panel');
@@ -1095,17 +1497,597 @@
     showSetupPanel();
   }
 
+  // ====================================================================
+  // K1-P3 — engage-mockup:// protocol handler installer (setup panel)
+  // ====================================================================
+  //
+  // Two-part feature shipped in K1-P3:
+  //   1. Static installer files in reference/cowork-app-starter/_scripts/
+  //      (engage-mockup-handler-windows.reg + engage-mockup-handler-mac.command)
+  //      published to GitHub Pages via the kit publish path.
+  //   2. The install button below — detects the user's OS, downloads the
+  //      right installer from raw.githubusercontent.com, and shows manual
+  //      post-download instructions inline.
+  //
+  // Linux is intentionally deferred to K2 (build plan §4) — Linux users
+  // get clear "no installer available" guidance + the clipboard fallback
+  // continues to work.
+
+  const PROTOCOL_HANDLER_BASE =
+    'https://raw.githubusercontent.com/ibrahim-hz/cowork-starter-kit/main/_scripts/';
+
+  const PROTOCOL_HANDLER_FILES = {
+    windows: { file: 'engage-mockup-handler-windows.reg', label: 'Windows' },
+    mac:     { file: 'engage-mockup-handler-mac.command', label: 'macOS' },
+    linux:   { file: null, label: 'Linux' },
+    unknown: { file: null, label: 'unknown OS' },
+  };
+
+  function detectOS() {
+    const platform = (navigator.platform || '').toLowerCase();
+    const ua = (navigator.userAgent || '').toLowerCase();
+    if (platform.includes('win') || ua.includes('windows')) return 'windows';
+    if (platform.includes('mac') || ua.includes('mac os')) return 'mac';
+    if (platform.includes('linux') || ua.includes('linux')) return 'linux';
+    return 'unknown';
+  }
+
+  function updateInstallOSLabels() {
+    const os = detectOS();
+    const meta = PROTOCOL_HANDLER_FILES[os] || PROTOCOL_HANDLER_FILES.unknown;
+    const nameEl = document.getElementById('install-os-name');
+    const detEl  = document.getElementById('install-os-detected');
+    if (nameEl) nameEl.textContent = meta.label;
+    if (detEl)  detEl.textContent  = meta.label + (meta.file ? '' : ' (manual install — see below)');
+  }
+
+  function downloadProtocolHandler() {
+    const os = detectOS();
+    const meta = PROTOCOL_HANDLER_FILES[os] || PROTOCOL_HANDLER_FILES.unknown;
+    const statusEl = document.getElementById('install-status');
+    if (!statusEl) return;
+    statusEl.className = 'setup-status';
+
+    if (!meta.file) {
+      // Linux / unknown — no auto-installer. Surface the fallback path.
+      statusEl.classList.add('error');
+      statusEl.innerHTML =
+        'No installer available for <b>' + escapeHtml(meta.label) + '</b>. ' +
+        "The tracker's clipboard fallback continues to work — clicks copy the URL " +
+        'and show a paste-hint toast. To author a handler for ' + escapeHtml(meta.label) +
+        ', see <code>reference/cowork-app-starter/_scripts/</code> in the kit repo ' +
+        'for the Windows + macOS templates.';
+      return;
+    }
+
+    // Trigger download of the installer file from the kit mirror.
+    // Anchor-with-download attribute = standard cross-browser download path.
+    const url = PROTOCOL_HANDLER_BASE + meta.file;
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = meta.file;
+    a.rel = 'noopener';
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+
+    statusEl.classList.add('success');
+    if (os === 'windows') {
+      statusEl.innerHTML =
+        'Downloaded <code>' + meta.file + '</code>. ' +
+        '<b>Next:</b> open your Downloads folder → double-click the file → ' +
+        'approve the UAC prompt + the registry-merge confirmation. ' +
+        'After that, clicking <code>engage-mockup://</code> links in the tracker ' +
+        'opens them directly in your browser.';
+    } else if (os === 'mac') {
+      statusEl.innerHTML =
+        'Downloaded <code>' + meta.file + '</code>. ' +
+        '<b>Next:</b> open Terminal, run <code>chmod +x ~/Downloads/' + meta.file + '</code>, ' +
+        'then double-click the file in Finder. If macOS Gatekeeper blocks it, ' +
+        'right-click → Open → Open in the warning dialog. ' +
+        'Wait for <i>✓ Installed successfully</i> in Terminal.';
+    }
+  }
+  // === end K1-P3 setup-panel installer ===
+
   function escapeHtml(s) { return String(s == null ? '' : s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;'); }
   function escapeAttr(s) { return escapeHtml(s).replace(/'/g, '&#39;'); }
-  // Wrap http/https URLs inside already-escaped text as clickable anchors. Runs AFTER escapeHtml.
+
+  // ====================================================================
+  // K1-P2 — engage-mockup:// URL click handler with clipboard fallback
+  // ====================================================================
+  //
+  // file:// and engage-mockup:// URLs route through openMockupLink() — the
+  // handler attempts a protocol launch via a hidden iframe (the OS protocol
+  // handler installed by K1-P3 picks it up if present and blurs the browser
+  // window momentarily as a success signal), and on no-blur within 500ms
+  // falls back to copying the URL to clipboard + showing a toast with
+  // paste instructions. http(s) URLs continue to render as plain anchors
+  // (target=_blank).
+  //
+  // Implementation note: we attach data-mockup-url + class="mockup-link"
+  // to the anchor (NOT inline onclick="..."), and a document-level click
+  // delegate routes it. Inline onclick was rejected because URLs may
+  // legitimately contain single quotes, which would break onclick parsing
+  // even after escapeHtml (which doesn't escape `'`).
+
+  async function openMockupLink(event, fileUrl) {
+    if (event && event.preventDefault) event.preventDefault();
+    // Normalize: prefer engage-mockup:// for the protocol-handler attempt
+    // (the handler script strips the scheme and opens the underlying
+    // file://). Already-engage-mockup:// URLs pass through unchanged.
+    const mockupUrl = fileUrl.startsWith('engage-mockup://')
+      ? fileUrl
+      : 'engage-mockup://' + fileUrl.slice('file://'.length);
+
+    let succeeded = false;
+    const onBlur = () => { succeeded = true; };
+    window.addEventListener('blur', onBlur, { once: true });
+
+    const frame = document.createElement('iframe');
+    frame.style.display = 'none';
+    frame.src = mockupUrl;
+    document.body.appendChild(frame);
+
+    // Give the OS handler 500ms to launch + blur the browser window.
+    await new Promise(resolve => setTimeout(resolve, 500));
+
+    window.removeEventListener('blur', onBlur);
+    if (frame.parentNode) frame.parentNode.removeChild(frame);
+
+    if (!succeeded) {
+      const copied = await copyToClipboard(fileUrl);
+      if (copied) showCopyToast(fileUrl);
+      else showCopyToast(fileUrl, 'Copy failed — select the URL above and copy manually.');
+    }
+    return false;
+  }
+
+  async function copyToClipboard(text) {
+    if (navigator.clipboard && navigator.clipboard.writeText) {
+      try {
+        await navigator.clipboard.writeText(text);
+        return true;
+      } catch (e) {
+        // fall through to textarea fallback (e.g., non-secure context)
+      }
+    }
+    const textarea = document.createElement('textarea');
+    textarea.value = text;
+    textarea.style.position = 'fixed';
+    textarea.style.opacity = '0';
+    textarea.setAttribute('readonly', '');
+    document.body.appendChild(textarea);
+    textarea.select();
+    let success = false;
+    try { success = document.execCommand('copy'); } catch (e) { /* swallow — return false */ }
+    document.body.removeChild(textarea);
+    return success;
+  }
+
+  let _copyToastTimeout = null;
+  function showCopyToast(manualUrl, hintOverride) {
+    const toast = document.getElementById('copy-toast');
+    if (!toast) return;
+    const urlEl = toast.querySelector('.copy-toast-url');
+    if (urlEl) urlEl.textContent = manualUrl || '';
+    const hintEl = toast.querySelector('.copy-toast-hint');
+    if (hintEl && hintOverride) {
+      hintEl.textContent = hintOverride;
+    } else if (hintEl) {
+      // Reset to default hint with kbd markup
+      hintEl.innerHTML = 'No protocol handler installed. Paste into a new tab: <kbd>Ctrl</kbd>+<kbd>L</kbd> → <kbd>Ctrl</kbd>+<kbd>V</kbd> → <kbd>Enter</kbd>';
+    }
+    toast.style.display = 'block';
+    requestAnimationFrame(() => { toast.classList.add('visible'); });
+    if (_copyToastTimeout) clearTimeout(_copyToastTimeout);
+    _copyToastTimeout = setTimeout(hideCopyToast, 6000);
+  }
+
+  function hideCopyToast() {
+    const toast = document.getElementById('copy-toast');
+    if (!toast) return;
+    toast.classList.remove('visible');
+    if (_copyToastTimeout) { clearTimeout(_copyToastTimeout); _copyToastTimeout = null; }
+    // Match CSS transition duration (250ms) before hiding.
+    setTimeout(() => {
+      if (!toast.classList.contains('visible')) toast.style.display = 'none';
+    }, 300);
+  }
+
+  // Wrap http/https/file/engage-mockup URLs inside already-escaped text as clickable anchors.
+  // Runs AFTER escapeHtml. file:// and engage-mockup:// route through openMockupLink() (K1-P2)
+  // via a class="mockup-link" + data-mockup-url anchor + document-level click delegate.
+  // http(s) URLs render as plain target="_blank" anchors as before.
   function linkify(escapedText) {
-    return escapedText.replace(/(https?:\/\/[^\s<]+)/g, '<a href="$1" target="_blank" rel="noopener">$1</a>');
+    return escapedText
+      .replace(
+        /((?:file|engage-mockup):\/\/[^\s<]+)/g,
+        '<a href="$1" class="mockup-link" data-mockup-url="$1">$1</a>'
+      )
+      .replace(
+        /(https?:\/\/[^\s<]+)/g,
+        '<a href="$1" target="_blank" rel="noopener">$1</a>'
+      );
   }
   function richContent(text) { return text ? linkify(escapeHtml(text)) : ''; }
   function stageClass(s) { return ({ 'Outstanding':'stage-outstanding','Current Sprint':'stage-current','QA':'stage-qa','Verified':'stage-verified' })[s] || 'stage-outstanding'; }
   function stageNumber(s) { return ({ 'Outstanding':1,'Current Sprint':2,'QA':3,'Verified':4 })[s] || 1; }
   function typeClass(t) { return 'type-' + (t || '').toLowerCase(); }
   function todayISO() { const d = new Date(); const mm = String(d.getMonth() + 1).padStart(2, '0'); const dd = String(d.getDate()).padStart(2, '0'); return d.getFullYear() + '-' + mm + '-' + dd; }
+
+  // ====================================================================
+  // K1-P4 — Comment thread + Build plan card UI (KIT-BOUNDARY EXCEPTION)
+  // ====================================================================
+  //
+  // Three new render surfaces shipped in K1-P4:
+  //   1. renderComments(item) — threaded conversation that replaces the
+  //      single userDetails+claudeResponse two-column body. Comments[] is
+  //      append-only; pendingClaudeReview is auto-derived from the last
+  //      author per build plan §2.3.
+  //   2. renderBuildPlanCard(item) — distinct card type for
+  //      itemType="build-plan" (gradient surface + kickoff-prompt code
+  //      block + click-to-copy). Sits in place of the standard item panel.
+  //   3. Queue-order UI (Outstanding stage only) — position badge,
+  //      reorder arrows, top-of-stage promotion breadcrumb.
+  //
+  // Backwards compatibility: items without comments[] derive an initial
+  // thread from legacy userDetails+claudeResponse at render time without
+  // mutating the item. Mutation happens on first user postComment(), so
+  // legacy data survives migration in K1-P7.
+
+  const COMMENT_AUTHOR_LABEL = {
+    user: 'You',
+    cowork: 'Cowork',
+    'claude-code': 'Claude Code',
+  };
+
+  // Markdown-lite: handle **bold**, *italic*, and `- item` lists. Runs
+  // AFTER escapeHtml (so input contains literal `**` characters, not HTML
+  // entities) and BEFORE linkify (so URLs aren't accidentally consumed by
+  // emphasis regexes). Deliberately small — full markdown is overkill for
+  // an inline planner comment.
+  function applyMarkdownLite(escapedText) {
+    if (!escapedText) return '';
+    let out = escapedText;
+    // Bold first so the inner `*` pair doesn't get eaten by italic.
+    out = out.replace(/\*\*([^*\n]+)\*\*/g, '<strong>$1</strong>');
+    out = out.replace(/(^|[\s(])\*([^*\n]+)\*(?=$|[\s)\.,;:!?])/g, '$1<em>$2</em>');
+    // Convert lines beginning with `- ` into a single <ul>. Consecutive
+    // bullet lines collapse into one list; non-bullet lines stay as-is.
+    const lines = out.split('\n');
+    const result = [];
+    let inList = false;
+    for (const line of lines) {
+      const bulletMatch = line.match(/^(\s*)-\s+(.+)$/);
+      if (bulletMatch) {
+        if (!inList) { result.push('<ul>'); inList = true; }
+        result.push('<li>' + bulletMatch[2] + '</li>');
+      } else {
+        if (inList) { result.push('</ul>'); inList = false; }
+        result.push(line);
+      }
+    }
+    if (inList) result.push('</ul>');
+    return result.join('\n');
+  }
+
+  function formatCommentTimestamp(iso) {
+    if (!iso) return '';
+    try {
+      const d = new Date(iso);
+      if (isNaN(d.getTime())) return escapeHtml(iso);
+      const today = new Date();
+      const sameDay = d.toDateString() === today.toDateString();
+      const time = d.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+      if (sameDay) return time;
+      const monthDay = d.toLocaleDateString([], { month: 'short', day: 'numeric' });
+      return monthDay + ' · ' + time;
+    } catch (e) {
+      return escapeHtml(iso);
+    }
+  }
+
+  // Return the comments array to RENDER for this item without mutating
+  // state. Items predating K1-P7 migration synthesize an initial thread
+  // from legacy userDetails + claudeResponse so they read like a normal
+  // conversation. Mutation happens in postComment() on first new post.
+  function getDerivedComments(item) {
+    if (Array.isArray(item.comments) && item.comments.length) return item.comments;
+    const derived = [];
+    const dateAdded = item.dateAdded || todayISO();
+    if (item.userDetails && item.userDetails.trim()) {
+      derived.push({ author: 'user', timestamp: dateAdded, text: item.userDetails });
+    }
+    if (item.claudeResponse && item.claudeResponse.trim()) {
+      derived.push({ author: 'cowork', timestamp: dateAdded, text: item.claudeResponse });
+    }
+    return derived;
+  }
+
+  function renderCommentBubble(comment) {
+    const author = COMMENT_AUTHOR_LABEL[comment.author] || comment.author || 'unknown';
+    const authorClass = (comment.author || 'unknown').replace(/[^a-z0-9-]/gi, '');
+    const text = comment.text || '';
+    const rendered = linkify(applyMarkdownLite(escapeHtml(text)));
+    return `<div class="comment-bubble ${authorClass}">
+      <div class="comment-meta">
+        <span class="comment-author">${escapeHtml(author)}</span>
+        <span class="comment-timestamp">${escapeHtml(formatCommentTimestamp(comment.timestamp))}</span>
+      </div>
+      <div class="comment-text">${rendered}</div>
+    </div>`;
+  }
+
+  function renderComments(item) {
+    const comments = getDerivedComments(item);
+    if (comments.length === 0) {
+      return '<div class="comment-thread"><div class="comment-empty">No comments yet — start the conversation below.</div></div>';
+    }
+    // Collapse threads >3 deep so the planner doesn't drown in old context.
+    const COLLAPSE_THRESHOLD = 3;
+    const isExpanded = expandedThreads.has(item.id);
+    let bubbles;
+    let toggleHtml = '';
+    if (comments.length > COLLAPSE_THRESHOLD && !isExpanded) {
+      const hiddenCount = comments.length - COLLAPSE_THRESHOLD;
+      const visible = comments.slice(-COLLAPSE_THRESHOLD);
+      toggleHtml = `<button type="button" class="comment-collapse-toggle" onclick="toggleCommentThread(${item.id})">Show ${hiddenCount} earlier comment${hiddenCount === 1 ? '' : 's'}…</button>`;
+      bubbles = visible.map(renderCommentBubble).join('');
+      return `<div class="comment-thread">${toggleHtml}${bubbles}</div>`;
+    }
+    bubbles = comments.map(renderCommentBubble).join('');
+    if (comments.length > COLLAPSE_THRESHOLD && isExpanded) {
+      toggleHtml = `<button type="button" class="comment-collapse-toggle" onclick="toggleCommentThread(${item.id})">Show fewer</button>`;
+    }
+    return `<div class="comment-thread">${toggleHtml}${bubbles}</div>`;
+  }
+
+  function renderCommentInput(item, opts) {
+    opts = opts || {};
+    const placeholder = opts.placeholder || 'Add a comment… (Markdown-lite: **bold**, *italic*, - lists)';
+    return `<div class="comment-input-row">
+      <textarea id="comment-input-${item.id}" placeholder="${escapeAttr(placeholder)}" oninput="onCommentInputChange(${item.id})"></textarea>
+      <button type="button" id="comment-post-${item.id}" class="comment-post-btn" disabled onclick="postComment(${item.id})">Post</button>
+    </div>`;
+  }
+
+  function onCommentInputChange(itemId) {
+    const ta = document.getElementById('comment-input-' + itemId);
+    const btn = document.getElementById('comment-post-' + itemId);
+    if (!ta || !btn) return;
+    btn.disabled = !ta.value.trim();
+  }
+
+  function toggleCommentThread(itemId) {
+    if (expandedThreads.has(itemId)) expandedThreads.delete(itemId);
+    else expandedThreads.add(itemId);
+    render();
+  }
+
+  function postComment(itemId) {
+    const ta = document.getElementById('comment-input-' + itemId);
+    if (!ta) return;
+    const text = ta.value.trim();
+    if (!text) return;
+    const item = state.items.find(i => i.id === itemId);
+    if (!item) return;
+    // Hydrate legacy items lazily so the first new post preserves the
+    // userDetails/claudeResponse-derived history at the top of the thread.
+    if (!Array.isArray(item.comments) || item.comments.length === 0) {
+      item.comments = getDerivedComments(item);
+    }
+    item.comments.push({
+      author: 'user',
+      timestamp: new Date().toISOString(),
+      text,
+    });
+    // Auto-derive pendingClaudeReview per build plan §2.3 — last author is
+    // user → an answer is expected. Scoped to stages that consume this flag
+    // (QA/Current Sprint/Outstanding); Verified is fully locked so we
+    // intentionally avoid flipping the flag there.
+    const status = item.status || 'Outstanding';
+    if (status !== 'Verified') {
+      item.pendingClaudeReview = true;
+      if (status === 'Current Sprint' && item.approvedForBuild) {
+        // New user input invalidates a prior build approval — match the
+        // existing inline-edit policy in startInlineEdit().
+        item.approvedForBuild = false;
+      }
+    }
+    ta.value = '';
+    flashSaveStatus('saving', 'Comment posted on #' + itemId + ' — click Save to write to disk.');
+    render();
+  }
+
+  // -- Build plan card --------------------------------------------------
+
+  function toggleKickoffPrompt(itemId) {
+    if (expandedKickoffs.has(itemId)) expandedKickoffs.delete(itemId);
+    else expandedKickoffs.add(itemId);
+    render();
+  }
+
+  async function copyKickoffPrompt(itemId) {
+    const item = state.items.find(i => i.id === itemId);
+    if (!item || !item.kickoffPrompt) return;
+    const ok = await copyToClipboard(item.kickoffPrompt);
+    if (!ok) {
+      flashSaveStatus('error', 'Copy failed — select the prompt text and copy manually.');
+      return;
+    }
+    recentlyCopiedKickoff.add(itemId);
+    render();
+    setTimeout(() => {
+      recentlyCopiedKickoff.delete(itemId);
+      render();
+    }, 2000);
+  }
+
+  // Sort key for the queue: lower queueOrder = promote sooner. Items
+  // without a queueOrder sink to the bottom so the user sees an explicit
+  // "you haven't ordered me yet" rather than them silently jumping the queue.
+  function compareQueueOrder(a, b) {
+    const ax = (a.queueOrder == null) ? Number.POSITIVE_INFINITY : a.queueOrder;
+    const bx = (b.queueOrder == null) ? Number.POSITIVE_INFINITY : b.queueOrder;
+    if (ax !== bx) return ax - bx;
+    return (a.id || 0) - (b.id || 0);
+  }
+
+  function moveQueueOrder(itemId, dir) {
+    const item = state.items.find(i => i.id === itemId);
+    if (!item || item.itemType !== 'build-plan' || item.status !== 'Outstanding') return;
+    const queue = state.items
+      .filter(i => i.itemType === 'build-plan' && i.status === 'Outstanding')
+      .sort(compareQueueOrder);
+    const idx = queue.findIndex(i => i.id === itemId);
+    if (idx === -1) return;
+    const swapIdx = dir === 'up' ? idx - 1 : idx + 1;
+    if (swapIdx < 0 || swapIdx >= queue.length) return;
+    const other = queue[swapIdx];
+    // Normalize any missing queueOrder to its current index so swapping
+    // doesn't leave a null behind.
+    if (item.queueOrder == null) item.queueOrder = idx + 1;
+    if (other.queueOrder == null) other.queueOrder = swapIdx + 1;
+    const tmp = item.queueOrder;
+    item.queueOrder = other.queueOrder;
+    other.queueOrder = tmp;
+    flashSaveStatus('saving', 'Queue order updated — click Save to write to disk.');
+    render();
+  }
+
+  function renderBuildPlanCard(item) {
+    const status = item.status || 'Outstanding';
+    const isOutstanding = status === 'Outstanding';
+    const expanded = expandedKickoffs.has(item.id);
+    const titleEmpty = !item.title || !item.title.trim();
+    const titleHtml = titleEmpty
+      ? '<span class="bpc-title placeholder">Untitled build plan</span>'
+      : `<div class="bpc-title">${escapeHtml(item.title)}</div>`;
+    const descHtml = item.shortDescription
+      ? `<div class="bpc-desc">${linkify(applyMarkdownLite(escapeHtml(item.shortDescription)))}</div>`
+      : '';
+    const promptCountHtml = (item.promptCount != null)
+      ? `<span class="bpc-prompt-count"><strong>${escapeHtml(String(item.promptCount))} prompts</strong></span>`
+      : '';
+
+    // Queue position badge — Outstanding only. Position is derived from
+    // the queue ordering, not the raw queueOrder field, so the badge stays
+    // accurate even when the user hasn't backfilled queueOrder values.
+    let queuePosHtml = '';
+    let queuedClass = '';
+    if (isOutstanding) {
+      const queue = state.items
+        .filter(i => i.itemType === 'build-plan' && i.status === 'Outstanding')
+        .sort(compareQueueOrder);
+      const pos = queue.findIndex(i => i.id === item.id) + 1; // 1-based
+      if (pos >= 1) {
+        queuedClass = ' queued';
+        const isUpNext = pos === 1;
+        const ordinal = pos === 1 ? 'Up next' : pos === 2 ? '2nd' : pos === 3 ? '3rd' : pos + 'th';
+        queuePosHtml = `<div class="queue-pos${isUpNext ? ' up-next' : ''}">
+          <div class="pos-num">${pos}</div>
+          <div class="pos-label">${escapeHtml(ordinal)}</div>
+        </div>`;
+      }
+    }
+
+    // Toggle button — collapsed/expanded label tracks the kickoff prompt panel.
+    const toggleLabel = expanded ? 'Hide kickoff prompt' : 'Show kickoff prompt';
+    const toggleChev = expanded ? '▴' : '▾';
+    const hasKickoff = !!(item.kickoffPrompt && item.kickoffPrompt.trim());
+    const toggleBtn = `<button type="button" class="bpc-toggle" onclick="toggleKickoffPrompt(${item.id})">${escapeHtml(toggleLabel)} <span class="chev">${toggleChev}</span></button>`;
+
+    // Reorder controls + drag handle — Outstanding only (Current Sprint /
+    // QA / Verified items don't have a user-controlled promotion order).
+    let reorderHtml = '';
+    if (isOutstanding) {
+      const queue = state.items
+        .filter(i => i.itemType === 'build-plan' && i.status === 'Outstanding')
+        .sort(compareQueueOrder);
+      const idx = queue.findIndex(i => i.id === item.id);
+      const atTop = idx <= 0;
+      const atBot = idx === queue.length - 1;
+      reorderHtml = `<div class="reorder-controls">
+        <button type="button" class="reorder-btn" onclick="moveQueueOrder(${item.id}, 'up')" ${atTop ? 'disabled' : ''} title="${atTop ? 'Already at top' : 'Move up (promote sooner)'}">▲</button>
+        <button type="button" class="reorder-btn" onclick="moveQueueOrder(${item.id}, 'down')" ${atBot ? 'disabled' : ''} title="${atBot ? 'Already at bottom' : 'Move down (delays promotion)'}">▼</button>
+      </div>
+      <span class="drag-handle" title="Drag to reorder (coming in K2)">⋮⋮</span>`;
+    }
+
+    // Expanded body — dark code block with the full kickoff prompt + copy
+    // button, plus the comment thread underneath (so build plan discussion
+    // sits alongside the prompt itself).
+    let bodyHtml = '';
+    if (expanded) {
+      const copiedClass = recentlyCopiedKickoff.has(item.id) ? ' copied' : '';
+      const copyLabel = recentlyCopiedKickoff.has(item.id) ? '✓ Copied' : '📋 Copy';
+      const copyBtnDisabled = hasKickoff ? '' : ' disabled';
+      const promptBlock = hasKickoff
+        ? `<div class="bpc-prompt-block"><button type="button" class="bpc-copy-btn${copiedClass}"${copyBtnDisabled} onclick="copyKickoffPrompt(${item.id})">${escapeHtml(copyLabel)}</button>${escapeHtml(item.kickoffPrompt)}</div>
+           <div class="bpc-prompt-footer">Click "Copy" to copy the full kickoff prompt. Paste into a fresh Claude Code session.</div>`
+        : '<div class="bpc-prompt-empty">No kickoff prompt recorded yet — Cowork will populate this when the sprint plan is finalized.</div>';
+      bodyHtml = `<div class="bpc-prompt-body">${promptBlock}</div>
+        <div class="bpc-comments">
+          ${renderComments(item)}
+          ${status === 'Verified' ? '' : renderCommentInput(item, { placeholder: 'Comment on this build plan…' })}
+        </div>`;
+    }
+
+    return `<div class="build-plan-card${queuedClass}" data-id="${item.id}">
+      ${queuePosHtml}
+      <div class="bpc-top">
+        <div class="bpc-left">
+          <div class="bpc-badge-row">
+            <span class="bpc-badge"><span class="icon">▶</span> Build Plan</span>
+            <span class="bpc-stage-tag">${escapeHtml(status)}</span>
+            ${promptCountHtml}
+          </div>
+          ${titleHtml}
+          ${descHtml}
+        </div>
+        <div class="bpc-right">
+          ${toggleBtn}
+          ${reorderHtml}
+        </div>
+      </div>
+      ${bodyHtml}
+    </div>`;
+  }
+
+  // Promotion-order breadcrumb shown at the top of the Outstanding stage
+  // when there is at least one build-plan item somewhere in the lifecycle.
+  // Mirrors mockup §340-354: current-sprint plan first (annotated
+  // "(building)"), then Outstanding queue in promotion order, first
+  // outstanding crumb annotated "(up next)".
+  function renderQueueBreadcrumb() {
+    const buildPlans = state.items.filter(i => i.itemType === 'build-plan');
+    if (buildPlans.length === 0) return '';
+    const current = buildPlans.filter(i => i.status === 'Current Sprint');
+    const queue = buildPlans.filter(i => i.status === 'Outstanding').sort(compareQueueOrder);
+    if (current.length === 0 && queue.length === 0) return '';
+    // Two crumbs is the minimum that justifies a breadcrumb at all; one
+    // build plan in isolation doesn't need a promotion chain.
+    if ((current.length + queue.length) < 2) return '';
+
+    const crumbs = [];
+    current.forEach(it => {
+      crumbs.push(`<span class="crumb current">${escapeHtml(it.title || 'Untitled')} (building)</span>`);
+    });
+    queue.forEach((it, idx) => {
+      const isNext = idx === 0;
+      const annotation = isNext ? ' (up next)' : '';
+      crumbs.push(`<span class="crumb${isNext ? ' next' : ''}">${escapeHtml(it.title || 'Untitled')}${annotation}</span>`);
+    });
+    const joined = crumbs.join('<span class="arrow">→</span>');
+    return `<div class="queue-breadcrumb">
+      <span class="label">Promotion order:</span>
+      ${joined}
+      <span class="reorder-hint">Use ▲▼ on cards below to reorder</span>
+    </div>`;
+  }
+  // === end K1-P4 ===
+
   function getEligible(arr, selectedRoles) {
     if (!selectedRoles || selectedRoles.length === 0) return arr;
     return arr.filter(x => selectedRoles.every(r => (x.roles || []).includes(r)));
@@ -1175,7 +2157,23 @@
   function matchesFilters(item) {
     const q = (document.getElementById('search-input').value || '').toLowerCase().trim();
     if (q) {
-      const hay = (item.title + ' ' + (item.userDetails || '') + ' ' + (item.claudeResponse || '') + ' ' + (item.page || '') + ' ' + (item.feature || '')).toLowerCase();
+      // K1-P4 — include comments[] text + build-plan fields in the search
+      // hay so freshly-posted thread context and kickoff-prompt content are
+      // findable. Legacy userDetails/claudeResponse stay in the hay for
+      // pre-migration items (K1-P7 retires them).
+      const commentText = Array.isArray(item.comments)
+        ? item.comments.map(c => c && c.text ? c.text : '').join(' ')
+        : '';
+      const hay = (
+        item.title + ' ' +
+        (item.userDetails || '') + ' ' +
+        (item.claudeResponse || '') + ' ' +
+        (item.page || '') + ' ' +
+        (item.feature || '') + ' ' +
+        commentText + ' ' +
+        (item.shortDescription || '') + ' ' +
+        (item.kickoffPrompt || '')
+      ).toLowerCase();
       if (!hay.includes(q)) return false;
     }
     if (filters.statusTab && item.status !== filters.statusTab) return false;
@@ -1286,6 +2284,12 @@
   }
 
   function renderDisplayPanel(item) {
+    // K1-P4 dispatch — build plan cards have their own distinct surface
+    // and skip the standard item-panel (no priority star, no status pill
+    // picker, no per-item type/role/page/feature controls — Cowork posts
+    // these and Claude Code promotes them; users discuss via comments).
+    if (item.itemType === 'build-plan') return renderBuildPlanCard(item);
+
     const priorityOn = item.priority === 'Yes';
     const status = item.status || 'Outstanding';
     const isVerified = status === 'Verified';
@@ -1340,17 +2344,13 @@
       ? `<span class="live-where-control italic ${featureEmpty} locked">${escapeHtml(featureLabel)}</span>`
       : `<span class="live-where-control italic ${featureEmpty} ${featureOpen ? 'open' : ''}" data-popover-field="feature" data-popover-item="${item.id}" title="Click to change feature">${escapeHtml(featureLabel)}${ICONS.chevronDown}${featureOpen ? renderFeaturePopover(item) : ''}</span>`;
 
-    // Body blocks — Your details locked when fully locked; gets pending styling in pending state
-    const hasUser = !!item.userDetails;
-    const hasClaude = !!item.claudeResponse;
-    const userExtraClass = isPending ? ' edited-in-qa' : '';
-    const userLabelExtra = isPending ? ' · edited' : '';
-    const userBlock = fullyLocked
-      ? `<div class="body-block user${userExtraClass}"><span class="block-label">Your details · locked</span><span class="block-content">${hasUser ? richContent(item.userDetails) : '<span class="empty">No details.</span>'}</span></div>`
-      : `<div class="body-block user${userExtraClass}"><span class="block-label">Your details${userLabelExtra}</span><span class="block-content inline-editable" onclick="startInlineEdit(${item.id}, 'userDetails', this)">${hasUser ? richContent(item.userDetails) : '<span class="empty">No details yet — click to add.</span>'}</span></div>`;
-    const claudeExtraClass = isPending ? ' stale' : '';
-    const claudeLabelExtra = isPending ? '<span class="stale-tag">· stale</span>' : (isAwaiting ? '<span class="stale-tag">· new</span>' : '');
-    const claudeBlock = `<div class="body-block claude${claudeExtraClass}"><span class="block-label">Claude's feedback${claudeLabelExtra}</span><span class="block-content">${hasClaude ? richContent(item.claudeResponse) : '<span class="empty">No feedback yet.</span>'}</span></div>`;
+    // K1-P4 — comment thread replaces the two-column userBlock+claudeBlock.
+    // The thread is append-only and rendered by renderComments(); items
+    // predating K1-P7 migration synthesize a thread from legacy
+    // userDetails/claudeResponse at render time (see getDerivedComments).
+    // Verified items skip the input row — fully-locked stage.
+    const commentsHtml = renderComments(item);
+    const commentInputHtml = fullyLocked ? '' : renderCommentInput(item);
 
     // Action buttons — vary by stage and sub-state
     let actionsHtml;
@@ -1435,7 +2435,8 @@
             ${verifiedBadge}
           </div>
           <div class="panel-badges">${statusPill}${typePill}${rolePills}<span class="where-sep">·</span>${pageControl}<span class="where-sep">·</span>${featureControl}</div>
-          <div class="panel-body">${userBlock}${claudeBlock}</div>
+          ${commentsHtml}
+          ${commentInputHtml}
         </div>
         <div class="panel-actions">
           ${actionsHtml}
@@ -1472,7 +2473,13 @@
       html += `<div class="empty-state"><h3>${state.items.length === 0 ? 'No items yet.' : 'No items match your filters.'}</h3><p>${state.items.length === 0 ? 'Click the row below to add your first item.' : 'Try adjusting the filters above.'}</p></div>`;
     } else if (filters.statusTab === 'Outstanding') {
       // Outstanding stage doesn't use sprint grouping — flat list only.
-      html += filtered.map(item => renderDisplayPanel(item)).join('');
+      // K1-P4: build-plan items render at the top in queueOrder, with the
+      // promotion-order breadcrumb above them when a chain is present.
+      const buildPlans = filtered.filter(i => i.itemType === 'build-plan').sort(compareQueueOrder);
+      const others     = filtered.filter(i => i.itemType !== 'build-plan');
+      html += renderQueueBreadcrumb();
+      html += buildPlans.map(item => renderDisplayPanel(item)).join('');
+      html += others.map(item => renderDisplayPanel(item)).join('');
     } else {
       // Current Sprint / QA / Verified — render sprint groups first, ungrouped items below.
       html += renderItemsWithGroups(filtered);
@@ -1500,6 +2507,11 @@
     let html = '';
     sortedSprints.forEach(n => {
       const groupItems = groups.get(n);
+      // K1-P4 — build plan card sits at the top of its sprint group with
+      // QA items beneath (mockup Demo 4). Preserves intra-bucket order.
+      const buildPlans = groupItems.filter(i => i.itemType === 'build-plan');
+      const others     = groupItems.filter(i => i.itemType !== 'build-plan');
+      const ordered    = [...buildPlans, ...others];
       const isCollapsed = collapsedSprintGroups.has(n);
       const chev = isCollapsed ? ICONS.chevronRight : ICONS.chevronDown;
       const countLabel = groupItems.length + ' ' + (groupItems.length === 1 ? 'item' : 'items');
@@ -1511,7 +2523,7 @@
           <span class="sprint-group-count">${countLabel}</span>
         </div>
         <div class="sprint-group-body">
-          ${groupItems.map(item => renderDisplayPanel(item)).join('')}
+          ${ordered.map(item => renderDisplayPanel(item)).join('')}
         </div>
       </div>`;
     });
@@ -1953,6 +2965,15 @@
     flashSaveStatus('saving', 'Copied #' + id + ' → #' + nextId + ' — click Save to write to disk.');
   }
 
+  // K1-P2 — global click delegate routes .mockup-link[data-mockup-url] clicks
+  // through openMockupLink(). The delegate fires for any descendant of <body>
+  // so it works for items rendered later by render() / saveToCloud() rerenders.
+  document.addEventListener('click', (event) => {
+    const target = event.target && event.target.closest && event.target.closest('.mockup-link[data-mockup-url]');
+    if (!target) return;
+    openMockupLink(event, target.getAttribute('data-mockup-url'));
+  });
+
   // Boot — async load from JSONbin (if configured), then render
   (async () => {
     flashSaveStatus('saving', 'Loading...');
@@ -1960,6 +2981,17 @@
     render();
   })();
 </script>
+
+<!-- K1-P2 — copy-to-clipboard toast (shown when engage-mockup:// click falls back to clipboard) -->
+<div id="copy-toast" class="copy-toast" style="display: none;" role="status" aria-live="polite" aria-atomic="true">
+  <div class="copy-toast-header">
+    <span class="copy-toast-title">📋 URL copied to clipboard</span>
+    <button class="copy-toast-close" type="button" onclick="hideCopyToast()" aria-label="Dismiss notification">×</button>
+  </div>
+  <div class="copy-toast-body">
+    <div class="copy-toast-url"></div>
+    <div class="copy-toast-hint">No protocol handler installed. Paste into a new tab: <kbd>Ctrl</kbd>+<kbd>L</kbd> → <kbd>Ctrl</kbd>+<kbd>V</kbd> → <kbd>Enter</kbd></div>
+  </div>
+</div>
 </body>
 </html>
-                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                

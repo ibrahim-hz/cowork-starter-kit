@@ -1,122 +1,155 @@
-# Tracker Setup — One-Time JSONbin Configuration
+# Tracker Setup — One-Time Supabase Configuration
 
-One-time setup walkthrough for the planning tracker. Takes about 10 minutes.
+One-time setup walkthrough for the planning tracker. Takes about 15 minutes.
 
-The planning tracker (`PLANNING-TRACKER-TEMPLATE.html`) is a self-contained HTML page that stores its data in a JSONbin.io bin. It captures planning items across four stages (Outstanding → Current Sprint → QA → Verified) and survives across Cowork sessions.
+The planning tracker (`PLANNING-TRACKER-TEMPLATE.html`) is a self-contained HTML page that stores its data in a Supabase Postgres row. It captures planning items across four stages (Outstanding → Current Sprint → QA → Verified) and survives across Cowork sessions.
 
-**Each project needs its own JSONbin bin.** Do NOT reuse a bin across projects — items will collide and overwrite each other.
+**Each project needs its own Supabase row** (one `tracker_state.id` per project). You can use a single Supabase project to host multiple trackers — different `id` values keep them isolated.
 
-Plain version: you're setting up a tiny cloud-hosted JSON file that the tracker reads and writes. Five minutes of clicking, five minutes of pasting.
+Plain version: you're setting up a row in a cloud Postgres table that the tracker reads and writes. Ten minutes of clicking, five minutes of pasting.
+
+> **Migrating from JSONbin?** If your project's tracker was set up under the legacy JSONbin model (kit version K1 or earlier), see the [**Migrating from JSONbin**](#migrating-from-jsonbin) section near the bottom of this file. The JSONbin code path remains in `PLANNING-TRACKER-TEMPLATE.html` for a 30-day grace period and is scheduled for removal in kit version K3.
 
 ---
 
 ## What you'll create
 
-1. A free JSONbin.io account (or sign in with an existing one)
-2. A new private bin for this project's tracker data
-3. A scoped Access Key (Read + Update only) for the embedded HTML to use
-4. The Master Key (full account access) for Claude Cowork / Claude Code to use programmatically
+1. A free Supabase account (or sign in with an existing one)
+2. A new Supabase project for this tracker
+3. The `tracker_state` table + RLS policies + auto-update trigger (one SQL paste)
+4. A scoped anon key for the embedded HTML to use
+5. A separate `tracker_state` row per project that uses this Supabase project
 
 ---
 
-## Step 1 — Create or sign in to JSONbin.io
+## Step 1 — Create or sign in to Supabase
 
-1. Go to **https://jsonbin.io**.
-2. Sign in with Google, GitHub, or email/password. Free tier is sufficient.
-3. Navigate to your account dashboard.
-
----
-
-## Step 2 — Get your Master Key
-
-1. In the JSONbin dashboard, find the **"API Keys"** section.
-2. Locate the **Master Key** (usually starts with `$2a$10$...`).
-3. **Copy it.** You'll paste it into your project's credentials file in Step 6.
-
-> ⚠️ The Master Key has full access to your entire JSONbin account. Do NOT embed it in the HTML or commit it to git. Treat it like a database password.
+1. Go to **https://supabase.com**.
+2. Sign in with GitHub, Google, or email/password. Free tier is sufficient.
+3. Navigate to your dashboard at `https://supabase.com/dashboard`.
 
 ---
 
-## Step 3 — Create a new bin for this project
+## Step 2 — Create a new project
 
-1. In the JSONbin dashboard, click **"Create Bin"** (or **"+ New Bin"**).
-2. Paste this **initial empty payload** into the bin body:
+1. Click **"New project"**.
+2. Configure:
+   - **Project name:** `<your-org>-tracker` (e.g., `acme-tracker`). One Supabase project can host multiple trackers, so a single shared project is fine if you have multiple downstream apps.
+   - **Database Password:** Supabase generates one. Save it to your password manager — you won't need it for the tracker itself, but you'll need it if you later add Prisma migrations or direct Postgres tooling.
+   - **Region:** Match your project's primary region.
+   - **Pricing plan:** Free tier (sufficient for tracker workloads).
+3. Click **"Create new project"** and wait ~2 minutes for provisioning.
 
-```json
-{
-  "config": {
-    "roles": ["User", "Admin"],
-    "pages": [],
-    "features": [],
-    "types": ["Bug", "Feature", "Polish", "Refactor"],
-    "priorities": ["Yes", "No"],
-    "statuses": ["Outstanding", "Current Sprint", "QA", "Verified"],
-    "nextSprintNumber": 1
-  },
-  "items": []
-}
+---
+
+## Step 3 — Apply the `tracker_state` schema
+
+This is the single SQL block that creates the table, enables RLS, and adds the auto-update trigger. Paste it once and you're done.
+
+1. In the Supabase dashboard, open the project from Step 2.
+2. Navigate to **SQL Editor** (left sidebar).
+3. Click **"New query"** and paste the following:
+
+```sql
+-- tracker_state schema + RLS + auto-update trigger
+-- Single source of truth: Kit-Sprint-2-Build-Plan.md §2.1 in the planning tracker kit.
+
+create table public.tracker_state (
+  id              text         primary key,
+  state           jsonb        not null,
+  schema_version  text         not null default 'v2',
+  updated_at      timestamptz  not null default now()
+);
+
+create index tracker_state_updated_at_idx
+  on public.tracker_state (updated_at desc);
+
+-- Row-level security: the anon key has access by default, so we explicitly
+-- gate what it can do. The tracker_id in the URL acts as the secret —
+-- anyone who knows the id can read/insert/update that one row, but
+-- cannot delete and cannot enumerate other rows by guessing ids.
+
+alter table public.tracker_state enable row level security;
+
+create policy tracker_state_read on public.tracker_state
+  for select to anon
+  using (true);
+
+create policy tracker_state_insert on public.tracker_state
+  for insert to anon
+  with check (true);
+
+create policy tracker_state_update on public.tracker_state
+  for update to anon
+  using (true)
+  with check (true);
+
+-- NO delete policy for anon — accidental deletion via browser is impossible.
+-- Service_role bypasses RLS and can delete if you ever need to clean up.
+
+grant select, insert, update on public.tracker_state to anon;
+
+-- Auto-update trigger so every UPDATE bumps the updated_at column.
+create or replace function public.tracker_state_touch_updated_at()
+returns trigger language plpgsql as $$
+begin
+  new.updated_at := now();
+  return new;
+end $$;
+
+create trigger tracker_state_touch
+  before update on public.tracker_state
+  for each row execute function public.tracker_state_touch_updated_at();
 ```
 
-3. Set bin metadata:
-   - **Name:** `<your-project-name>-planning-tracker` (e.g., `myapp-planning-tracker`)
-   - **Private:** YES (toggle to private)
-   - **Versioning:** OFF (saves storage; the tracker doesn't need history)
+4. Click **"Run"** (or press Ctrl/Cmd+Enter). You should see "Success. No rows returned."
 
-4. Click **Save**.
-
-5. **Copy the Bin ID** that appears in the URL (`https://jsonbin.io/<BIN_ID>` — that 24-char hex string). You'll paste this in Step 5.
+5. **Sanity-check** the schema is live:
+   - Navigate to **Table Editor** (left sidebar).
+   - You should see `tracker_state` listed under the `public` schema with columns `id`, `state`, `schema_version`, `updated_at`.
 
 ---
 
-## Step 4 — Create a scoped Access Key for this bin
+## Step 4 — Get your project ref + anon key
 
-The Master Key has full account access — too broad to embed in HTML that runs in a browser. Create a scoped Access Key that can only Read and Update this specific bin.
+The tracker URL embeds both values in its fragment.
 
-1. In the JSONbin dashboard, navigate to **"Access Keys"** (different from the API Keys section that holds the Master Key).
-2. Click **"Create Access Key"**.
-3. Configure:
-   - **Name:** `<your-project-name>-tracker-rw`
-   - **Permissions:** **Read** ✓ and **Update** ✓ ONLY (do NOT grant Delete, Create, or Versioning)
-   - **Scope:** This specific bin (paste the Bin ID from Step 3)
-4. Click **Create**.
-5. **Copy the Access Key** that appears. Looks similar to the Master Key (`$2a$10$...`) but with restricted permissions.
+1. In the Supabase dashboard, click the **Project Settings** gear icon (bottom of the left sidebar).
+2. Navigate to **API** (or **API Keys** in newer dashboards).
+3. **Copy the Project URL** — it looks like `https://abcdefgh12345678.supabase.co`. The **project ref** is the subdomain part (`abcdefgh12345678` in this example).
+4. **Copy the `anon` (publishable) key.** Looks like `sb_publishable_<random>` or, on older projects, a JWT starting with `eyJ...`.
+5. **Also copy the `service_role` key** for the credentials file (Step 6). Looks like `sb_secret_<random>` or a JWT.
 
-> The Access Key is safe to embed in the HTML because its blast radius is limited to read+update on this one bin. It can't access other bins or delete anything.
+> ⚠️ The service_role key bypasses RLS — it has the equivalent of admin access. **Never** embed it in HTML, commit it to git, paste it in a public chat, or include it in a URL. Treat it like a database password. The anon key is safe to put in URLs (RLS gates its access).
 
 ---
 
-## Step 5 — Populate the HTML tracker
+## Step 5 — Build your tracker bookmark URL
 
-1. Open `PLANNING-TRACKER-TEMPLATE.html` in a code editor.
-2. Find the `DEFAULT_BIN_CONFIG` block (search for it — should be near the top of the `<script>` section, after the icon definitions).
-3. Replace the empty values:
+The tracker HTML is hosted publicly. Each project's bookmark embeds its own project ref + anon key + tracker_id in the URL fragment (the part after `#`). Fragments are never sent to servers, so the URL is safe to bookmark + share within your team.
 
-```javascript
-// BEFORE
-const DEFAULT_BIN_CONFIG = {
-  binId:   '',
-  apiKey:  '',
-  keyType: 'access'
-};
+URL template:
 
-// AFTER (paste your values)
-const DEFAULT_BIN_CONFIG = {
-  binId:   '<paste your Bin ID from Step 3 here>',
-  apiKey:  '<paste your Access Key from Step 4 here>',
-  keyType: 'access'   // keep as 'access' — the embedded key is the Access Key, not the Master Key
-};
+```
+https://ibrahim-hz.github.io/cowork-starter-kit/PLANNING-TRACKER-TEMPLATE.html#project=<PROJECT_REF>&anon_key=<ANON_KEY>&tracker_id=<TRACKER_ID>
 ```
 
-4. Save the file.
-5. (Optional but recommended) Rename `PLANNING-TRACKER-TEMPLATE.html` → `PLANNING-TRACKER.html` (drop the `-TEMPLATE` suffix) so it's clear this is the live tracker, not the template.
+Substitute:
+- `<PROJECT_REF>` — from Step 4 (e.g., `abcdefgh12345678`)
+- `<ANON_KEY>` — from Step 4 (e.g., `sb_publishable_...`)
+- `<TRACKER_ID>` — a short identifier for **this** project's row. For a single-tracker Supabase project, `engage` or your project's short name works. For a multi-tracker shared project, use distinct ids per downstream app (e.g., `acme-app`, `acme-mobile`).
+
+> **The tracker_id acts as a secret.** Anyone with the URL can read/write that row. Pick something hard to guess if your Supabase project is shared with apps that handle sensitive planning data.
+
+Bookmark the resulting URL in your browser. Each team member can use the same URL.
 
 ---
 
-## Step 6 — Store the Master Key + Bin ID in your project's credentials file
+## Step 6 — Store credentials in your project's secrets file
 
-The Master Key is used by Claude Cowork and Claude Code when they need to read or write the tracker programmatically. It should NOT be in the HTML (HTML is read by browsers; Master Key is for trusted server-side use).
+The service_role key is for programmatic admin tasks (migrations, bulk edits, cleanup). It must **never** be in the browser-loaded HTML. Store it in a gitignored credentials file alongside the other secrets your project tracks.
 
-Each project has its own conventions for where credentials live. Common options:
+Common patterns:
 
 - **A gitignored `CREDENTIALS.md` file** in the project root or a `reference/` folder
 - **A `.env.local` file** (if your project already uses dotenv)
@@ -125,14 +158,21 @@ Each project has its own conventions for where credentials live. Common options:
 Recommended pattern: create a `CREDENTIALS.md` file alongside this `cowork-app-starter/` folder (NOT inside the folder, NOT committed to git). Add a section like:
 
 ```markdown
-## Section 14 — Planning Tracker (JSONbin.io)
+## Section 14 — Planning Tracker (Supabase)
 
-- Bin ID: <paste your Bin ID from Step 3>
-- Master Key (full account access, use for Cowork / Claude Code programmatic reads/writes):
-  $2a$10$<paste your Master Key>
-- Access Key (Read+Update only, embedded in PLANNING-TRACKER.html):
-  $2a$10$<paste your Access Key — same as in DEFAULT_BIN_CONFIG above>
-- Bin URL (for direct browser access if needed): https://jsonbin.io/<your-bin-id>
+| Field | Value |
+|---|---|
+| Project Name | <your-tracker-project-name> |
+| Project Ref | `<paste your project ref from Step 4>` |
+| Project URL | `https://<project-ref>.supabase.co` |
+| Region | <region from Step 2> |
+| Anon Key (publishable — safe in URLs) | `<paste your anon key>` |
+| Service Role Key (SECRET — admin equivalent) | `<paste your service_role key>` |
+| Tracker ID | `<your tracker id from Step 5>` |
+
+### Tracker bookmark URL
+
+https://ibrahim-hz.github.io/cowork-starter-kit/PLANNING-TRACKER-TEMPLATE.html#project=<PROJECT_REF>&anon_key=<ANON_KEY>&tracker_id=<TRACKER_ID>
 ```
 
 Make sure this file is in your project's `.gitignore`. Verify with:
@@ -148,61 +188,80 @@ If `git check-ignore` returns nothing, the file is NOT ignored. Add the appropri
 
 ## Step 7 — Verify the tracker works
 
-1. Open the `PLANNING-TRACKER.html` (or `PLANNING-TRACKER-TEMPLATE.html` if you didn't rename) directly in a browser (no server needed — double-click or `open` it).
-2. The tracker UI should load. You should see four tabs (Outstanding / Current Sprint / QA / Verified) and an "Add item" button.
+1. Open the bookmark URL from Step 5 in a browser.
+2. The tracker UI should load with the "Storage: Supabase" indicator visible in the header. You should see four tabs (Outstanding / Current Sprint / QA / Verified) and an "Add item" button.
 3. Click **"Add item"**, type a test title (e.g., "Test tracker"), click save.
-4. Refresh the browser. The item should still be there — that confirms it's saved to JSONbin, not just to in-memory state.
-5. Open https://jsonbin.io/<your-bin-id> in another tab and confirm the bin's content reflects the new item.
+4. Refresh the browser. The item should still be there — that confirms it's saved to Supabase, not just to in-memory state.
+5. Open the Supabase dashboard → **Table Editor** → `tracker_state` and confirm a row with your tracker_id is present, with `state` containing the test item under `items`.
 6. Delete the test item from the tracker. Refresh again to confirm it's gone.
 
 If any of these steps fail:
-- **Page loads but shows "Setup banner":** the `DEFAULT_BIN_CONFIG` values are wrong or missing. Re-check Step 5.
-- **"Auth failed" or 401 errors:** the Access Key is wrong, or the Key Type mismatch (you may have pasted the Master Key but kept `keyType: 'access'`). If you're using the Master Key, set `keyType: 'master'` — but prefer the Access Key for the embedded HTML.
-- **Items don't persist on refresh:** browser might be blocking the JSONbin domain (check your ad-blocker / privacy extension), OR the Access Key doesn't have Update permission. Re-check Step 4.
+- **Page loads but shows "Setup banner":** the URL fragment is wrong or missing params. Recheck Steps 4 and 5.
+- **"HTTP 401" errors in the browser console:** the anon key is wrong, or RLS policies didn't apply. Recheck Step 3's SQL ran without errors.
+- **"HTTP 403 / not allowed" or "Forbidden use of secret API key in browser":** you pasted the service_role key in the URL instead of the anon key. Replace with the anon key.
+- **Items don't persist on refresh:** browser may be blocking `*.supabase.co` (check your ad-blocker / privacy extension); OR the RLS policies were not applied. Re-run Step 3's SQL.
 
 ---
 
-## What Cowork and Claude Code do with the tracker
+## Migrating from JSONbin
 
-Once the tracker is live:
+If your project's tracker was set up under kit version K1 or earlier, your live data is in a JSONbin bin. K2 introduces the Supabase backend and adds a 30-day grace period where both backends are supported.
 
-- **During sprint planning** (Cowork), the `COWORK-PLANNING-KICKOFF.md` prompt reads the tracker via the JSONbin API to derive the sprint number from sprint-locked items and surface the locked-in scope back to you. See `PLANNING-TRACKER-GUIDE.md` for the API details.
-- **During sprint execution** (Claude Code), the tracker is generally not read — Claude Code works off the build plan + sprint folder.
-- **After sprint planning is done** (Cowork), the kickoff prompt moves the sprint-locked items from Current Sprint → QA in the tracker via a `PUT` to the bin.
-- **After QA** (you, manually), you click Approve in the tracker UI for items that passed, or Back-to-sprint for items that need rework.
+**Reference implementation:** the Engage planning kit (the upstream that ships this template) used the script at:
+
+```
+reference/kit-sprints/K2 - Tracker on Supabase/_scripts/migrate-jsonbin-to-supabase.py
+```
+
+Adapt the pattern for your project:
+
+1. **Provision the Supabase backend** (Steps 1-3 of this guide).
+2. **Read your live JSONbin bin** using the master key from your `CREDENTIALS.md` (legacy section).
+3. **Upsert into `tracker_state`** with `id = <your tracker id>` and `state = <verbatim {config, items} blob from JSONbin>`. The Supabase JSONB column stores the JSONbin payload as-is — no schema transformation needed (the v1→v2 item-schema migration shipped in kit version K1).
+4. **Verify** the migrated row's `state` JSONB byte-equals the JSONbin source under canonical encoding (`sort_keys=True`).
+5. **Update your bookmark** from the JSONbin URL fragment (`#bin=…&key=…&keyType=access`) to the Supabase URL fragment (`#project=…&anon_key=…&tracker_id=…`).
+6. **Do NOT delete the JSONbin bin yet.** Keep it as a fallback for 30 days. The planner UI accepts both URL fragment shapes during the grace period and surfaces a deprecation banner when the legacy fragment is in use.
+
+Two transport-layer constraints worth knowing if you adapt the script:
+
+- **JSONbin sits behind Cloudflare** and rejects requests with default `Python-urllib` User-Agents (returns HTTP 403, Cloudflare error code 1010). Use a browser-shaped User-Agent for JSONbin calls (the reference script does this).
+- **Supabase service_role keys (`sb_secret_*` format)** are rejected by the API when the User-Agent looks browser-like (returns HTTP 401 "Forbidden use of secret API key in browser"). Use a non-browser User-Agent for Supabase service_role calls. Anon-key calls are unaffected by this heuristic.
+
+---
+
+## Multi-tracker setup (one Supabase project, multiple downstream apps)
+
+A single Supabase project can host arbitrarily many trackers. Each tracker is one row in `tracker_state` keyed by a unique `id`. The schema setup (Step 3) only needs to run once per project; subsequent trackers just need a distinct `tracker_id` in their bookmark URL.
+
+Use cases:
+- A workspace running multiple Cowork-planned projects can share one Supabase project + one anon key, with each project's tracker keyed by its own `tracker_id`.
+- A team can have a `prod` tracker + a `staging` tracker side-by-side without provisioning two Supabase projects.
+
+Security note: anyone with the anon key + a guessable `tracker_id` can read/write that row. If you share trackers across less-trusted contexts, use random `tracker_id` values rather than predictable names.
 
 ---
 
 ## Cost & quota
 
-JSONbin's free tier includes:
-- 10,000 requests/month
-- 100KB max bin size
-- Versioning available (we turn it off)
+Supabase's free tier (as of K2):
+- 500 MB database storage
+- Unlimited API requests (with rate limits)
+- 50,000 monthly active users (irrelevant for trackers since the anon key isn't a user)
 
-For a typical solo dev / small team, the planning tracker's request volume is well under the free tier limit. Each Cowork planning conversation does ~1 read + 1 write. Each tracker UI interaction is one request. Even a busy month (50 conversations + 500 UI interactions) is well under 10,000.
+For a typical solo dev / small team, a planning tracker's storage and request volume is negligible — well under any free-tier limit. A single tracker's `state` JSONB column is typically <200 KB even at 60+ items with active comment threads.
 
-### ⚠️ Bin-size ceiling — plan ahead
-
-JSONbin Free plan caps each record at **100 KB**. Trackers with 60+ items and active comment threads will hit this ceiling. Two paths:
-
-1. **Upgrade to JSONbin Pro** ($5/mo, 1 MB record cap).
-2. **Archive completed items** to a separate "archive" bin periodically. Keep the live bin lean.
-
-The current tracker schema (`comments[]` array, no duplicated text in legacy fields) was designed to maximize free-tier headroom — a duplicated-text approach hit the ceiling at ~40 items in early testing.
-
-If you exceed the free tier, JSONbin paid plans start at $5/month for 1M requests + larger bin size.
+If you exceed the free tier or want SLA guarantees, Supabase paid plans start at $25/month.
 
 ---
 
 ## When to rotate keys
 
-Rotate both the Master Key and the Access Key:
-- If you suspect either is leaked (committed to git accidentally, pasted in a public chat, exposed in browser DevTools logs by mistake)
+Rotate the anon key:
+- If you suspect the URL has leaked publicly (committed to git accidentally, posted in a public chat, exposed in a screenshot)
 - If a team member with access leaves
 - At minimum every 12 months as routine hygiene
 
-To rotate: create a new key in the JSONbin dashboard, update `DEFAULT_BIN_CONFIG` (Access Key) and CREDENTIALS.md (Master Key + Access Key copies), test the tracker still works, then delete the old key.
+To rotate the anon key: Supabase dashboard → **Project Settings → API → Rotate anon key**. Then update every bookmark URL with the new key. The service_role key rotates from the same panel — much rarer event, but follow the same hygiene rule.
 
 ---
 
@@ -217,15 +276,16 @@ To rotate: create a new key in the JSONbin dashboard, update `DEFAULT_BIN_CONFIG
 
 ## Quick checklist
 
-- [ ] JSONbin account created or signed in
-- [ ] Master Key copied (will live in CREDENTIALS.md)
-- [ ] Bin created with empty initial payload, named `<project>-planning-tracker`, set to private
-- [ ] Bin ID copied
-- [ ] Access Key created with Read + Update only, scoped to this bin
-- [ ] Access Key copied
-- [ ] `DEFAULT_BIN_CONFIG` in HTML populated (Bin ID + Access Key + `keyType: 'access'`)
-- [ ] HTML optionally renamed (drop `-TEMPLATE` suffix)
-- [ ] CREDENTIALS.md updated with Master Key + Bin ID + Access Key
+- [ ] Supabase account created or signed in
+- [ ] Project provisioned (Step 2)
+- [ ] `tracker_state` schema + RLS + trigger applied via SQL Editor (Step 3)
+- [ ] Schema verified in Table Editor (Step 3 sanity-check)
+- [ ] Project ref copied (Step 4)
+- [ ] Anon key copied (Step 4)
+- [ ] Service_role key copied (Step 4)
+- [ ] Tracker bookmark URL built (Step 5)
+- [ ] CREDENTIALS.md updated with all four values + bookmark URL
 - [ ] CREDENTIALS.md is gitignored (verified via `git check-ignore`)
-- [ ] Tracker opens in browser, shows the four stage tabs
+- [ ] Tracker opens in browser, shows the four stage tabs, "Storage: Supabase" indicator visible
 - [ ] Test item adds, persists on refresh, deletes cleanly
+- [ ] Test row visible in Supabase Table Editor under `tracker_state`

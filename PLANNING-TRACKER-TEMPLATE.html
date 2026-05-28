@@ -75,6 +75,39 @@
   .save-status.saved  { background: var(--success-bg); color: var(--success-fg); }
   .save-status.error  { background: var(--danger-bg); color: var(--danger-fg); }
 
+  /* K2-P4 — backend indicator pill (Storage: Supabase / Storage: JSONbin (legacy)) */
+  .backend-indicator {
+    font-size: 11px; color: var(--text-secondary);
+    padding: 4px 10px; border-radius: 999px; background: var(--info-bg);
+    border: 1px solid var(--info-border);
+    font-weight: 500; letter-spacing: 0.2px;
+  }
+  .backend-indicator.legacy {
+    background: var(--warning-bg); color: var(--warning-fg);
+    border-color: var(--warning-fg);
+  }
+
+  /* K2-P4 — legacy JSONbin deprecation banner */
+  .legacy-banner {
+    background: var(--warning-bg); color: var(--warning-fg);
+    border: 1px solid var(--warning-fg); border-radius: 8px;
+    padding: 10px 14px; margin-bottom: 12px;
+    font-size: 12.5px; line-height: 1.5;
+  }
+
+  /* K2-P4 — backend selector radio row (top of setup panel) */
+  .setup-backend-row {
+    display: flex; gap: 16px; flex-wrap: wrap;
+    padding: 8px 10px; margin: 0 0 10px;
+    background: var(--panel); border: 1px solid var(--info-border);
+    border-radius: 8px;
+  }
+  .setup-backend-radio {
+    display: inline-flex; align-items: center; gap: 6px;
+    font-size: 12.5px; color: var(--info-fg); cursor: pointer;
+  }
+  .setup-backend-radio input[type="radio"] { margin: 0; }
+
   /* JSONbin setup panel */
   .setup-panel {
     background: var(--info-bg);
@@ -1019,6 +1052,51 @@
   /* === end K1-P4 === */
 
   /* ====================================================================
+     K2-P6 — Drag-to-reorder + right-click queue context menu
+     ====================================================================
+     Extends the K1-P4 queue surface with HTML5 drag-and-drop on
+     Outstanding build-plan cards plus a custom right-click menu for
+     bulk moves (top / bottom / ±5). The ▲▼ reorder buttons stay; this
+     layer is power-user polish on top, not a replacement. Persistence
+     path unchanged — reorders mutate state.items[].queueOrder and
+     flashSaveStatus('saving', …) tells the user to click Save, exactly
+     like the existing ▲▼ buttons. */
+  .build-plan-card.queue-dragging { opacity: 0.45; cursor: grabbing; }
+  .build-plan-card.drop-target-above {
+    box-shadow: inset 0 3px 0 0 var(--buildplan-tint);
+  }
+  .build-plan-card.drop-target-below {
+    box-shadow: inset 0 -3px 0 0 var(--buildplan-tint);
+  }
+  .queue-context-menu {
+    position: fixed;
+    background: #fff;
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    box-shadow: 0 6px 20px rgba(0, 0, 0, 0.18);
+    padding: 4px 0;
+    min-width: 200px;
+    z-index: 9999;
+    font-size: 12.5px;
+    user-select: none;
+  }
+  .queue-context-menu .menu-item {
+    display: block;
+    width: 100%;
+    text-align: left;
+    background: transparent;
+    border: 0;
+    padding: 7px 14px;
+    font: inherit;
+    color: var(--text);
+    cursor: pointer;
+  }
+  .queue-context-menu .menu-item:hover:not(:disabled) { background: var(--gray-bg); }
+  .queue-context-menu .menu-item:disabled { color: var(--text-tertiary); cursor: not-allowed; }
+  .queue-context-menu .menu-sep { height: 1px; background: var(--border); margin: 4px 0; }
+  /* === end K2-P6 === */
+
+  /* ====================================================================
      K1-P3 — Single-click mockup-link installer section (setup panel)
      ==================================================================== */
   .setup-divider {
@@ -1085,31 +1163,73 @@
       <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>
     </button>
     <span id="save-status" class="save-status">Ready</span>
+    <!-- K2-P4 — backend indicator pill. Painted by updateBackendIndicator()
+         in loadState; shows "Storage: Supabase" or "Storage: JSONbin (legacy)".
+         Hidden when no cfg is active. -->
+    <span id="backend-indicator" class="backend-indicator" style="display: none;"></span>
   </div>
+
+  <!-- K2-P4 — legacy JSONbin deprecation banner. Painted by
+       showLegacyJsonbinBanner() in loadState when the active cfg is JSONbin
+       OR when both fragment param sets are present and Supabase won. -->
+  <div id="legacy-banner" class="legacy-banner" style="display: none;"></div>
 
   <div id="setup-panel" class="setup-panel" style="display: none;">
     <div class="setup-header">
-      <h3>Connect to JSONbin cloud storage</h3>
+      <h3>Connect to cloud storage</h3>
       <button class="setup-close" onclick="hideSetupPanel()" title="Close">×</button>
     </div>
-    <p class="setup-intro">Save and load your tracker data through <a href="https://jsonbin.io" target="_blank">JSONbin.io</a> so it's accessible from any browser and from Claude Cowork without using the Anthropic API.</p>
-    <ol class="setup-steps">
-      <li>Sign up at <a href="https://jsonbin.io" target="_blank">jsonbin.io</a> (free).</li>
-      <li>Click your name → <b>API Keys</b> → copy the <b>X-Master-Key</b>.</li>
-      <li>Paste it below. Leave Bin ID empty on first setup — we'll create one for you.</li>
-    </ol>
-    <div class="setup-fields">
+    <!-- K2-P4 — backend selector. Supabase is the default + recommended path
+         (post-K2-P5 cutover). JSONbin remains for the 30-day grace period
+         until K3-P0/P1 decommissions the JSONbin code path entirely. -->
+    <div class="setup-backend-row">
+      <label class="setup-backend-radio">
+        <input type="radio" name="setup-backend" value="supabase" checked onchange="toggleSetupBackendFields()">
+        <strong>Supabase</strong> <span class="setup-optional">(recommended)</span>
+      </label>
+      <label class="setup-backend-radio">
+        <input type="radio" name="setup-backend" value="jsonbin" onchange="toggleSetupBackendFields()">
+        <strong>JSONbin</strong> <span class="setup-optional">(legacy — removed in K3)</span>
+      </label>
+    </div>
+
+    <!-- Supabase fields (default visible). -->
+    <div id="setup-supabase-fields" class="setup-fields">
+      <p class="setup-intro" style="margin-bottom: 6px;">Save and load tracker data through your own Supabase project's <code>tracker_state</code> table. The anon key is safe to embed in a URL bookmark (it's gated by RLS policies the schema applies).</p>
+      <ol class="setup-steps">
+        <li>Provision a new Supabase project (free tier).</li>
+        <li>Apply the <code>tracker_state</code> schema (see <code>TRACKER-SETUP.md</code> for the SQL — runs once via Supabase dashboard SQL editor).</li>
+        <li>Copy the project ref + anon key from Settings → API. Pick a tracker ID (any string — typically your project name).</li>
+      </ol>
+      <label for="setup-sb-project">Project Ref</label>
+      <input type="text" id="setup-sb-project" placeholder="e.g., vsfscitalgxxhmtzcrtr">
+      <label for="setup-sb-anon-key">Anon Key</label>
+      <input type="password" id="setup-sb-anon-key" placeholder="sb_publishable_...">
+      <label for="setup-sb-tracker-id">Tracker ID</label>
+      <input type="text" id="setup-sb-tracker-id" placeholder="e.g., my-project">
+    </div>
+
+    <!-- JSONbin fields (legacy — hidden unless toggled). -->
+    <div id="setup-jsonbin-fields" class="setup-fields" style="display: none;">
+      <p class="setup-intro" style="margin-bottom: 6px;">Legacy path: save and load through <a href="https://jsonbin.io" target="_blank">JSONbin.io</a>. JSONbin will be removed in K3 — prefer Supabase for new setups.</p>
+      <ol class="setup-steps">
+        <li>Sign up at <a href="https://jsonbin.io" target="_blank">jsonbin.io</a> (free).</li>
+        <li>Click your name → <b>API Keys</b> → copy the <b>X-Master-Key</b>.</li>
+        <li>Paste it below. Leave Bin ID empty on first setup — we'll create one for you.</li>
+      </ol>
       <label for="setup-api-key">X-Master-Key</label>
       <input type="password" id="setup-api-key" placeholder="$2a$10$...">
       <label for="setup-bin-id">Bin ID <span class="setup-optional">(optional — leave empty to create new)</span></label>
       <input type="text" id="setup-bin-id" placeholder="e.g., 6543abc123def">
-      <div class="setup-actions">
-        <button class="btn-primary" onclick="connectBin()">Connect</button>
-        <button class="btn-secondary" onclick="hideSetupPanel()">Cancel</button>
-        <button class="btn-icon setup-disconnect" onclick="disconnectBin()" title="Disconnect from current bin">Disconnect</button>
-      </div>
-      <div id="setup-status" class="setup-status"></div>
     </div>
+
+    <!-- Shared action row (used by whichever backend is selected). -->
+    <div class="setup-actions">
+      <button class="btn-primary" onclick="connectBin()">Connect</button>
+      <button class="btn-secondary" onclick="hideSetupPanel()">Cancel</button>
+      <button class="btn-icon setup-disconnect" onclick="disconnectBin()" title="Disconnect from current backend">Disconnect</button>
+    </div>
+    <div id="setup-status" class="setup-status"></div>
 
     <!-- K1-P3 — single-click local mockup link installer -->
     <div class="setup-divider"></div>
@@ -1195,6 +1315,12 @@
 
   const BIN_STORAGE_KEY = 'planning_tracker_bin_config';
   const JSONBIN_BASE = 'https://api.jsonbin.io/v3/b';
+  // K2-P4 — per-backend localStorage key for Supabase. Separate from
+  // BIN_STORAGE_KEY so the planner can remember BOTH backends' configs
+  // simultaneously (the setup panel's backend radio toggle reads whichever
+  // is selected). If the user switches backends, the inactive backend's
+  // config stays preserved in localStorage rather than being overwritten.
+  const SUPABASE_STORAGE_KEY = 'planning_tracker_supabase_config';
 
   // ===== DEFAULT JSONBIN CONFIG =====
   // Three ways to provide your Bin ID + JSONbin Access Key, in priority order:
@@ -1236,43 +1362,198 @@
 
   function flashSaveStatus(cls, msg) { const el = document.getElementById('save-status'); el.textContent = msg; el.className = 'save-status ' + cls; }
 
-  // ---------- JSONbin storage ----------
+  // ---------- Cloud storage adapters (K2-P4) ----------
+  //
+  // Pre-K2-P4 the planner had a single JSONbin storage layer. K2-P4 introduces
+  // a Supabase adapter alongside JSONbin and gates them behind a service-
+  // adapter pattern so loadState() / saveToCloud() / setupPanel are
+  // adapter-agnostic. Both adapters expose the same interface:
+  //   adapter.name                  — display string ("JSONbin" / "Supabase")
+  //   adapter.legacyTag             — '' for current, ' (legacy)' for deprecated
+  //   adapter.validateConfig(cfg)   — returns error string or null
+  //   adapter.fetch(cfg)            — returns Promise<stateObj | null>
+  //   adapter.save(cfg, stateObj)   — returns Promise<void>
+  //
+  // URL fragment formats (handled by getBinConfig dispatch below):
+  //   #bin=<binId>&key=<accessKey>&keyType=access            → JSONbin (legacy)
+  //   #project=<ref>&anon_key=<key>&tracker_id=<id>          → Supabase
+  //   Both present → Supabase wins; banner notes legacy params are ignored.
+  //
+  // The JSONbin path remains operational for a 30-day grace period after the
+  // K2-P5 cutover; K3-P0/P1 will remove it entirely (per K2 build plan §4).
+
+  const JSONBIN_ADAPTER = {
+    name: 'JSONbin',
+    legacyTag: ' (legacy)',
+    validateConfig(cfg) {
+      if (!cfg.binId)  return 'Missing bin ID';
+      if (!cfg.apiKey) return 'Missing API key';
+      return null;
+    },
+    async fetch(cfg)              { return fetchFromBin(cfg); },
+    async save(cfg, stateObj)     { return saveToBin(cfg, stateObj); },
+  };
+
+  const SUPABASE_ADAPTER = {
+    name: 'Supabase',
+    legacyTag: '',
+    validateConfig(cfg) {
+      if (!cfg.projectRef) return 'Missing project ref';
+      if (!cfg.anonKey)    return 'Missing anon key';
+      if (!cfg.trackerId)  return 'Missing tracker id';
+      return null;
+    },
+    baseUrl(cfg) {
+      // PostgREST URL shape: https://<project>.supabase.co/rest/v1/<table>
+      return 'https://' + cfg.projectRef + '.supabase.co/rest/v1/tracker_state';
+    },
+    authHeaders(cfg) {
+      // Supabase REST requires BOTH apikey (project identity) and Authorization
+      // (the actual token — same value as apikey when using anon-key access).
+      return {
+        'apikey':        cfg.anonKey,
+        'Authorization': 'Bearer ' + cfg.anonKey,
+      };
+    },
+    async fetch(cfg) {
+      // GET /rest/v1/tracker_state?id=eq.<trackerId>&select=state
+      // Response shape: [] (row absent) OR [{"state": {...}}] (row present).
+      // Returns the inner state object directly — or null when the row hasn't
+      // been created yet (so loadState falls back to the embedded seed, same
+      // behaviour as JSONbin's empty-bin path).
+      const url = this.baseUrl(cfg) +
+        '?id=eq.' + encodeURIComponent(cfg.trackerId) +
+        '&select=state';
+      const res = await window.fetch(url, { headers: this.authHeaders(cfg) });
+      if (!res.ok) throw new Error('HTTP ' + res.status + ' ' + (await res.text()));
+      const rows = await res.json();
+      if (!Array.isArray(rows) || rows.length === 0) return null;
+      return rows[0].state;
+    },
+    async save(cfg, stateObj) {
+      // POST with `Prefer: resolution=merge-duplicates,return=minimal` is the
+      // PostgREST upsert directive — Supabase auto-detects the PRIMARY KEY (id)
+      // and decides INSERT vs UPDATE atomically. K2-P3's RLS policy grants both
+      // INSERT and UPDATE to anon, so the upsert is authorised regardless of
+      // which operation actually fires. `return=minimal` keeps the response
+      // body empty (we don't need the row body back; we already have state in
+      // memory).
+      const res = await window.fetch(this.baseUrl(cfg), {
+        method: 'POST',
+        headers: {
+          ...this.authHeaders(cfg),
+          'Content-Type': 'application/json',
+          'Prefer': 'resolution=merge-duplicates,return=minimal',
+        },
+        body: JSON.stringify({ id: cfg.trackerId, state: stateObj }),
+      });
+      if (!res.ok) throw new Error('HTTP ' + res.status + ' ' + (await res.text()));
+      return null;
+    },
+  };
+
+  // ---------- Cloud config dispatch (K2-P4) ----------
   function getBinConfig() {
-    // 1) URL fragment takes top priority — lets each app's bookmark inject its own
-    //    bin config when the tracker is hosted on a shared URL (e.g., GitHub Pages).
-    //    Format: #bin=<binId>&key=<accessKey>&keyType=access
-    //    URLSearchParams auto-decodes percent-encoded values; the fragment itself is
-    //    never sent to servers, so the apiKey is safe from server logs and Referer headers.
+    // Priority order:
+    //   1. URL fragment Supabase params (#project=…&anon_key=…&tracker_id=…)
+    //   2. URL fragment JSONbin params (#bin=…&key=…) — legacy, surfaces banner
+    //   3. localStorage Supabase config (planning_tracker_supabase_config)
+    //   4. localStorage JSONbin config (planning_tracker_bin_config) — legacy
+    //   5. Hardcoded DEFAULT_BIN_CONFIG (JSONbin only — kit-user default)
+    //
+    // Returns either:
+    //   { adapter: SUPABASE_ADAPTER, projectRef, anonKey, trackerId,
+    //     legacyJsonbinPresent: bool }
+    // or:
+    //   { adapter: JSONBIN_ADAPTER, binId, apiKey, keyType,
+    //     legacyDeprecation: bool }
+    // or null when nothing is configured.
+    //
+    // The fragment is never sent to servers (browser-only), so keys embedded
+    // in URL bookmarks are safe from server logs + HTTP Referer headers — same
+    // model the JSONbin path used pre-K2-P4.
+    let hashParams = null;
     try {
       const hash = location.hash.startsWith('#') ? location.hash.slice(1) : location.hash;
-      if (hash) {
-        const params = new URLSearchParams(hash);
-        const binId = params.get('bin');
-        const apiKey = params.get('key');
-        if (binId && apiKey) {
-          const keyType = params.get('keyType') === 'master' ? 'master' : 'access';
-          return { binId, apiKey, keyType };
-        }
+      if (hash) hashParams = new URLSearchParams(hash);
+    } catch {}
+
+    if (hashParams) {
+      const project   = hashParams.get('project');
+      const anonKey   = hashParams.get('anon_key');
+      const trackerId = hashParams.get('tracker_id');
+      const bin       = hashParams.get('bin');
+      const key       = hashParams.get('key');
+
+      // Supabase wins when both sets present (per K2 build plan §2.2).
+      if (project && anonKey && trackerId) {
+        return {
+          adapter: SUPABASE_ADAPTER,
+          projectRef: project,
+          anonKey,
+          trackerId,
+          legacyJsonbinPresent: !!(bin && key),
+        };
+      }
+      if (bin && key) {
+        const keyType = hashParams.get('keyType') === 'master' ? 'master' : 'access';
+        return {
+          adapter: JSONBIN_ADAPTER,
+          binId: bin,
+          apiKey: key,
+          keyType,
+          legacyDeprecation: true,
+        };
+      }
+    }
+
+    // localStorage — Supabase first (post-K2-P5 default), then JSONbin (legacy).
+    try {
+      const sb = JSON.parse(localStorage.getItem(SUPABASE_STORAGE_KEY) || 'null');
+      if (sb && sb.projectRef && sb.anonKey && sb.trackerId) {
+        return { adapter: SUPABASE_ADAPTER, projectRef: sb.projectRef, anonKey: sb.anonKey, trackerId: sb.trackerId };
       }
     } catch {}
-    // 2) localStorage — lets a user override defaults on a specific browser
     try {
-      const stored = JSON.parse(localStorage.getItem(BIN_STORAGE_KEY));
+      const stored = JSON.parse(localStorage.getItem(BIN_STORAGE_KEY) || 'null');
       if (stored && stored.binId && stored.apiKey) {
         if (!stored.keyType) stored.keyType = 'master'; // legacy stored configs predate keyType
-        return stored;
+        return { adapter: JSONBIN_ADAPTER, binId: stored.binId, apiKey: stored.apiKey, keyType: stored.keyType };
       }
     } catch {}
-    // 3) Fall back to the hardcoded DEFAULT_BIN_CONFIG if both fields are set
+
+    // Hardcoded DEFAULT_BIN_CONFIG fallback (JSONbin only).
     if (DEFAULT_BIN_CONFIG.binId && DEFAULT_BIN_CONFIG.apiKey) {
-      const out = { ...DEFAULT_BIN_CONFIG };
+      const out = { adapter: JSONBIN_ADAPTER, ...DEFAULT_BIN_CONFIG };
       if (!out.keyType) out.keyType = 'master';
       return out;
     }
     return null;
   }
-  function setBinConfig(cfg) { localStorage.setItem(BIN_STORAGE_KEY, JSON.stringify(cfg)); }
-  function clearBinConfig() { localStorage.removeItem(BIN_STORAGE_KEY); }
+  // setBinConfig / clearBinConfig are adapter-aware (K2-P4): they write to the
+  // localStorage key matching the cfg's adapter. The JSONbin key+Supabase key
+  // are independent so both backends can be remembered simultaneously.
+  function setBinConfig(cfg) {
+    if (cfg.adapter === SUPABASE_ADAPTER) {
+      const { projectRef, anonKey, trackerId } = cfg;
+      localStorage.setItem(SUPABASE_STORAGE_KEY, JSON.stringify({ projectRef, anonKey, trackerId }));
+    } else {
+      const { binId, apiKey, keyType } = cfg;
+      localStorage.setItem(BIN_STORAGE_KEY, JSON.stringify({ binId, apiKey, keyType }));
+    }
+  }
+  function clearBinConfig(cfg) {
+    // When invoked with a cfg, clear only that backend's localStorage entry.
+    // When invoked with no arg (legacy callers), clear both keys to fully
+    // disconnect from cloud storage.
+    if (!cfg) {
+      localStorage.removeItem(BIN_STORAGE_KEY);
+      localStorage.removeItem(SUPABASE_STORAGE_KEY);
+      return;
+    }
+    if (cfg.adapter === SUPABASE_ADAPTER) localStorage.removeItem(SUPABASE_STORAGE_KEY);
+    else                                   localStorage.removeItem(BIN_STORAGE_KEY);
+  }
 
   // JSONbin REQUIRES the matching header for the key type:
   //   Master Key → X-Master-Key   (full account access)
@@ -1316,8 +1597,12 @@
     return res;
   }
 
-  async function fetchFromBin() {
-    const cfg = getBinConfig();
+  // K2-P4 — fetchFromBin / saveToBin now take cfg as a parameter so the
+  // JSONBIN_ADAPTER wrapper can dispatch generically. Pre-K2-P4 they pulled
+  // cfg internally via getBinConfig(), which forced JSONbin assumptions
+  // throughout the call chain. The adapter pattern requires the caller (the
+  // adapter) to supply cfg.
+  async function fetchFromBin(cfg) {
     if (!cfg) return null;
     const res = await jsonbinRequest(cfg, JSONBIN_BASE + '/' + cfg.binId + '/latest', {
       headers: { 'X-Bin-Meta': 'false' }
@@ -1325,8 +1610,7 @@
     if (!res.ok) throw new Error('HTTP ' + res.status + ' ' + (await res.text()));
     return await res.json();
   }
-  async function saveToBin(stateObj) {
-    const cfg = getBinConfig();
+  async function saveToBin(cfg, stateObj) {
     if (!cfg) throw new Error('JSONbin not configured');
     const res = await jsonbinRequest(cfg, JSONBIN_BASE + '/' + cfg.binId, {
       method: 'PUT',
@@ -1370,23 +1654,69 @@
     return normalizeState(JSON.parse(document.getElementById('tracker-data').textContent));
   }
 
+  // K2-P4 — small UI helpers for the active backend.
+  // updateBackendIndicator paints the "Storage: <name>" pill next to the
+  // save-status pill; showLegacyJsonbinBanner shows a top-of-page deprecation
+  // notice when a JSONbin URL is loaded (or when both sets of fragment params
+  // are present and Supabase won).
+  function updateBackendIndicator(cfg) {
+    const el = document.getElementById('backend-indicator');
+    if (!el) return;
+    if (!cfg) {
+      el.style.display = 'none';
+      el.textContent = '';
+      el.classList.remove('legacy');
+      return;
+    }
+    const isLegacy = cfg.adapter === JSONBIN_ADAPTER;
+    el.style.display = 'inline-block';
+    el.textContent = 'Storage: ' + cfg.adapter.name + cfg.adapter.legacyTag;
+    el.classList.toggle('legacy', isLegacy);
+  }
+  function showLegacyJsonbinBanner(reason) {
+    const banner = document.getElementById('legacy-banner');
+    if (!banner) return;
+    let msg;
+    if (reason === 'overridden') {
+      msg = 'Legacy JSONbin params present in URL but being ignored — Supabase params take precedence (K2 build plan §2.2). Remove the bin= and key= params from your bookmark URL.';
+    } else {
+      msg = 'This planner URL uses legacy JSONbin storage. Switch to the new Supabase URL — see CREDENTIALS.md §14 for the new format. Legacy support is removed in K3.';
+    }
+    banner.textContent = msg;
+    banner.style.display = 'block';
+  }
+  function hideLegacyJsonbinBanner() {
+    const banner = document.getElementById('legacy-banner');
+    if (banner) banner.style.display = 'none';
+  }
+
   async function loadState() {
     const cfg = getBinConfig();
     if (!cfg) {
       state = loadEmbeddedSeed();
-      flashSaveStatus('error', 'Not connected to JSONbin — click ⚙ to set up cloud save.');
+      flashSaveStatus('error', 'Not connected to cloud storage — click ⚙ to set up cloud save.');
       showSetupPanel();
+      updateBackendIndicator(null);
+      hideLegacyJsonbinBanner();
       return;
     }
-    flashSaveStatus('saving', 'Loading from cloud...');
+    updateBackendIndicator(cfg);
+    if (cfg.adapter === JSONBIN_ADAPTER && cfg.legacyDeprecation) {
+      showLegacyJsonbinBanner();
+    } else if (cfg.adapter === SUPABASE_ADAPTER && cfg.legacyJsonbinPresent) {
+      showLegacyJsonbinBanner('overridden');
+    } else {
+      hideLegacyJsonbinBanner();
+    }
+    flashSaveStatus('saving', 'Loading from ' + cfg.adapter.name + '...');
     try {
-      const fromBin = await fetchFromBin();
-      if (fromBin && (fromBin.items !== undefined || fromBin.config !== undefined)) {
-        state = normalizeState(fromBin);
+      const fromCloud = await cfg.adapter.fetch(cfg);
+      if (fromCloud && (fromCloud.items !== undefined || fromCloud.config !== undefined)) {
+        state = normalizeState(fromCloud);
         flashSaveStatus('saved', 'Loaded · ' + new Date().toLocaleTimeString());
       } else {
         state = loadEmbeddedSeed();
-        flashSaveStatus('error', 'Bin returned empty data. Using local seed.');
+        flashSaveStatus('error', cfg.adapter.name + ' returned empty data. Using local seed.');
       }
     } catch (e) {
       console.error(e);
@@ -1402,9 +1732,9 @@
       showSetupPanel();
       return;
     }
-    flashSaveStatus('saving', 'Saving to cloud...');
+    flashSaveStatus('saving', 'Saving to ' + cfg.adapter.name + '...');
     try {
-      await saveToBin(state);
+      await cfg.adapter.save(cfg, state);
       flashSaveStatus('saved', 'Saved · ' + new Date().toLocaleTimeString());
     } catch (e) {
       console.error('Save failed:', e);
@@ -1420,14 +1750,30 @@
   }
 
   // ---------- Setup panel ----------
+  // K2-P4 — setup panel is now backend-aware. The Supabase + JSONbin field
+  // groups live side-by-side, but only one shows at a time, gated by a radio
+  // toggle at the top. The active cfg (if any) drives which radio + which
+  // fields auto-populate; the default selection is Supabase since K2-P5
+  // makes that the recommended path.
   function showSetupPanel() {
     const panel = document.getElementById('setup-panel');
     if (!panel) return;
     panel.style.display = 'block';
     const cfg = getBinConfig();
-    if (cfg) {
+    const supabaseRadio = document.querySelector('input[name="setup-backend"][value="supabase"]');
+    const jsonbinRadio  = document.querySelector('input[name="setup-backend"][value="jsonbin"]');
+    if (supabaseRadio && jsonbinRadio) {
+      if (cfg && cfg.adapter === JSONBIN_ADAPTER) jsonbinRadio.checked = true;
+      else                                        supabaseRadio.checked = true;
+    }
+    toggleSetupBackendFields();
+    if (cfg && cfg.adapter === JSONBIN_ADAPTER) {
       document.getElementById('setup-api-key').value = cfg.apiKey || '';
-      document.getElementById('setup-bin-id').value = cfg.binId || '';
+      document.getElementById('setup-bin-id').value  = cfg.binId  || '';
+    } else if (cfg && cfg.adapter === SUPABASE_ADAPTER) {
+      document.getElementById('setup-sb-project').value    = cfg.projectRef || '';
+      document.getElementById('setup-sb-anon-key').value   = cfg.anonKey    || '';
+      document.getElementById('setup-sb-tracker-id').value = cfg.trackerId  || '';
     }
     // K1-P3 — populate the install-handler OS labels when the panel opens
     // (deferred to here rather than DOMContentLoaded so the values reflect
@@ -1439,6 +1785,16 @@
     if (panel) panel.style.display = 'none';
     document.getElementById('setup-status').textContent = '';
     document.getElementById('setup-status').className = 'setup-status';
+  }
+  // K2-P4 — toggle which backend's fields are visible based on the radio
+  // selection. Invoked from the radio onchange + from showSetupPanel after
+  // setting the initial radio state.
+  function toggleSetupBackendFields() {
+    const selected = (document.querySelector('input[name="setup-backend"]:checked') || {}).value || 'supabase';
+    const sb = document.getElementById('setup-supabase-fields');
+    const jb = document.getElementById('setup-jsonbin-fields');
+    if (sb) sb.style.display = selected === 'supabase' ? 'flex' : 'none';
+    if (jb) jb.style.display = selected === 'jsonbin'  ? 'flex' : 'none';
   }
   // Probe which header authenticates this key. Tries X-Access-Key first (the
   // scoped, safer option); falls back to X-Master-Key. Returns the keyType that
@@ -1455,11 +1811,53 @@
     return null;
   }
 
+  // K2-P4 — connectBin now dispatches to the selected backend's connect helper.
+  // The shared "Connect" button reads the radio selection and routes here; each
+  // helper handles its backend's validation + smoke-test + localStorage persist.
   async function connectBin() {
-    const apiKey = (document.getElementById('setup-api-key').value || '').trim();
-    let binId = (document.getElementById('setup-bin-id').value || '').trim();
+    const selected = (document.querySelector('input[name="setup-backend"]:checked') || {}).value || 'supabase';
     const statusEl = document.getElementById('setup-status');
     statusEl.className = 'setup-status';
+    if (selected === 'jsonbin') return connectJsonbin(statusEl);
+    return connectSupabase(statusEl);
+  }
+  async function connectSupabase(statusEl) {
+    const projectRef = (document.getElementById('setup-sb-project').value    || '').trim();
+    const anonKey    = (document.getElementById('setup-sb-anon-key').value   || '').trim();
+    const trackerId  = (document.getElementById('setup-sb-tracker-id').value || '').trim();
+    const cfg = { adapter: SUPABASE_ADAPTER, projectRef, anonKey, trackerId };
+    const validationError = SUPABASE_ADAPTER.validateConfig(cfg);
+    if (validationError) {
+      statusEl.textContent = validationError;
+      statusEl.classList.add('error');
+      return;
+    }
+    statusEl.textContent = 'Connecting to Supabase...';
+    try {
+      // Smoke-test the connection with a read. probe is null (row not yet
+      // created — expected for fresh setups) or the state object. Either is
+      // fine; an HTTP error throws and lands in the catch.
+      const probe = await SUPABASE_ADAPTER.fetch(cfg);
+      setBinConfig(cfg);
+      statusEl.textContent = 'Connected · project ' + projectRef +
+        ' · tracker ' + trackerId +
+        (probe === null ? ' · (row not yet created — first save will create it)' : '');
+      statusEl.classList.add('success');
+      flashSaveStatus('saved', 'Connected to Supabase');
+      setTimeout(async () => {
+        hideSetupPanel();
+        await loadState();
+        render();
+      }, 700);
+    } catch (e) {
+      console.error(e);
+      statusEl.textContent = 'Failed: ' + (e.message || 'unknown');
+      statusEl.classList.add('error');
+    }
+  }
+  async function connectJsonbin(statusEl) {
+    const apiKey = (document.getElementById('setup-api-key').value || '').trim();
+    let binId    = (document.getElementById('setup-bin-id').value  || '').trim();
     if (!apiKey) { statusEl.textContent = 'Paste your API key first.'; statusEl.classList.add('error'); return; }
     statusEl.textContent = binId ? 'Connecting...' : 'Creating new bin...';
     try {
@@ -1474,7 +1872,8 @@
         keyType = await detectKeyType(binId, apiKey);
         if (!keyType) throw new Error('Key not accepted as either X-Access-Key or X-Master-Key. Check the bin ID and the key value.');
       }
-      setBinConfig({ binId, apiKey, keyType });
+      const cfg = { adapter: JSONBIN_ADAPTER, binId, apiKey, keyType };
+      setBinConfig(cfg);
       statusEl.textContent = 'Connected · bin ID ' + binId + ' · keyType=' + keyType;
       statusEl.classList.add('success');
       flashSaveStatus('saved', 'Connected to JSONbin');
@@ -1485,15 +1884,23 @@
       }, 700);
     } catch (e) {
       console.error(e);
-      clearBinConfig();
+      clearBinConfig({ adapter: JSONBIN_ADAPTER });
       statusEl.textContent = 'Failed: ' + (e.message || 'unknown');
       statusEl.classList.add('error');
     }
   }
   function disconnectBin() {
-    if (!confirm('Disconnect from JSONbin? Your data will stay in the bin but the tracker will use embedded seed data until you reconnect.')) return;
-    clearBinConfig();
+    const activeCfg = getBinConfig();
+    const backendName = activeCfg ? activeCfg.adapter.name : 'cloud storage';
+    if (!confirm('Disconnect from ' + backendName + '? Your data will stay where it is but the tracker will use embedded seed data until you reconnect.')) return;
+    // Adapter-aware clear: only the active backend's localStorage entry is
+    // wiped. The other backend's config (if any) stays intact so the user
+    // can hot-swap without re-entering credentials.
+    if (activeCfg) clearBinConfig(activeCfg);
+    else           clearBinConfig();
     flashSaveStatus('error', 'Disconnected. Tracker is using embedded seed.');
+    updateBackendIndicator(null);
+    hideLegacyJsonbinBanner();
     showSetupPanel();
   }
 
@@ -2012,7 +2419,7 @@
         <button type="button" class="reorder-btn" onclick="moveQueueOrder(${item.id}, 'up')" ${atTop ? 'disabled' : ''} title="${atTop ? 'Already at top' : 'Move up (promote sooner)'}">▲</button>
         <button type="button" class="reorder-btn" onclick="moveQueueOrder(${item.id}, 'down')" ${atBot ? 'disabled' : ''} title="${atBot ? 'Already at bottom' : 'Move down (delays promotion)'}">▼</button>
       </div>
-      <span class="drag-handle" title="Drag to reorder (coming in K2)">⋮⋮</span>`;
+      <span class="drag-handle" title="Drag card to reorder, or right-click for more options">⋮⋮</span>`;
     }
 
     // Expanded body — dark code block with the full kickoff prompt + copy
@@ -2034,7 +2441,20 @@
         </div>`;
     }
 
-    return `<div class="build-plan-card${queuedClass}" data-id="${item.id}">
+    // K2-P6 — drag-and-drop + right-click context menu hooks (Outstanding only).
+    // The whole card root is draggable per build plan §3.7 STEP 2. The drag
+    // handle ⋮⋮ is a visual affordance; the entire card surface accepts grabs.
+    const dragAttrs = isOutstanding
+      ? ` draggable="true"`
+        + ` ondragstart="handleQueueDragStart(event, ${item.id})"`
+        + ` ondragend="handleQueueDragEnd(event)"`
+        + ` ondragover="handleQueueDragOver(event, ${item.id})"`
+        + ` ondragleave="handleQueueDragLeave(event, ${item.id})"`
+        + ` ondrop="handleQueueDrop(event, ${item.id})"`
+        + ` oncontextmenu="handleQueueContextMenu(event, ${item.id})"`
+      : '';
+
+    return `<div class="build-plan-card${queuedClass}" data-id="${item.id}"${dragAttrs}>
       ${queuePosHtml}
       <div class="bpc-top">
         <div class="bpc-left">
@@ -2083,10 +2503,214 @@
     return `<div class="queue-breadcrumb">
       <span class="label">Promotion order:</span>
       ${joined}
-      <span class="reorder-hint">Use ▲▼ on cards below to reorder</span>
+      <span class="reorder-hint">Drag cards, click ▲▼, or right-click for bulk moves</span>
     </div>`;
   }
   // === end K1-P4 ===
+
+  // ========================================================================
+  // K2-P6 — Drag-to-reorder + right-click queue context menu
+  // ========================================================================
+  // Power-user polish on top of K1-P4's ▲▼ buttons. The whole Outstanding
+  // build-plan card root is draggable; a custom right-click menu offers
+  // "Move to top / bottom" and "Move ±5 places". Persistence path is
+  // identical to the ▲▼ buttons — mutate queueOrder, flashSaveStatus, render;
+  // user clicks Save to write through the storage adapter (K2-P4).
+  //
+  // No new data shape; only the existing queueOrder field is rewritten.
+  // After any reorder, queueOrder values are renumbered 1..N across the
+  // Outstanding queue so the field stays compact + deterministic.
+
+  let draggedQueueItemId = null;
+  let activeQueueContextMenu = null;
+  let queueContextMenuDismiss = null;
+
+  // Move an Outstanding build-plan item to a specific 0-based index in
+  // the queue (clamped to valid range). Renumbers queueOrder across the
+  // whole Outstanding queue so values stay 1..N. Returns true if the
+  // queue actually changed.
+  function moveQueueOrderTo(itemId, targetIdx) {
+    const item = state.items.find(i => i.id === itemId);
+    if (!item || item.itemType !== 'build-plan' || item.status !== 'Outstanding') return false;
+    const queue = state.items
+      .filter(i => i.itemType === 'build-plan' && i.status === 'Outstanding')
+      .sort(compareQueueOrder);
+    const currentIdx = queue.findIndex(i => i.id === itemId);
+    if (currentIdx === -1) return false;
+    const clamped = Math.max(0, Math.min(queue.length - 1, targetIdx));
+    if (clamped === currentIdx) return false;
+    const reordered = queue.slice();
+    const [moved] = reordered.splice(currentIdx, 1);
+    reordered.splice(clamped, 0, moved);
+    reordered.forEach((it, idx) => { it.queueOrder = idx + 1; });
+    return true;
+  }
+
+  function clearQueueDragVisuals() {
+    document.querySelectorAll(
+      '.build-plan-card.drop-target-above, .build-plan-card.drop-target-below'
+    ).forEach(el => el.classList.remove('drop-target-above', 'drop-target-below'));
+    document.querySelectorAll('.build-plan-card.queue-dragging')
+      .forEach(el => el.classList.remove('queue-dragging'));
+  }
+
+  function handleQueueDragStart(event, itemId) {
+    const item = state.items.find(i => i.id === itemId);
+    if (!item || item.itemType !== 'build-plan' || item.status !== 'Outstanding') {
+      event.preventDefault();
+      return;
+    }
+    draggedQueueItemId = itemId;
+    try {
+      event.dataTransfer.effectAllowed = 'move';
+      // setData is required for Firefox to actually initiate the drag.
+      event.dataTransfer.setData('text/plain', 'queue:' + itemId);
+    } catch (_) { /* ignore — older browsers */ }
+    event.currentTarget.classList.add('queue-dragging');
+  }
+
+  function handleQueueDragOver(event, itemId) {
+    if (draggedQueueItemId == null || draggedQueueItemId === itemId) return;
+    event.preventDefault();
+    try { event.dataTransfer.dropEffect = 'move'; } catch (_) {}
+    const card = event.currentTarget;
+    const rect = card.getBoundingClientRect();
+    const above = (event.clientY - rect.top) < (rect.height / 2);
+    card.classList.toggle('drop-target-above', above);
+    card.classList.toggle('drop-target-below', !above);
+  }
+
+  function handleQueueDragLeave(event, itemId) {
+    const card = event.currentTarget;
+    // dragleave fires when entering a child element too; only clear the
+    // visual when actually leaving the card outright.
+    if (event.relatedTarget && card.contains(event.relatedTarget)) return;
+    card.classList.remove('drop-target-above', 'drop-target-below');
+  }
+
+  function handleQueueDrop(event, targetItemId) {
+    event.preventDefault();
+    const sourceId = draggedQueueItemId;
+    const dropAbove = event.currentTarget.classList.contains('drop-target-above');
+    clearQueueDragVisuals();
+    draggedQueueItemId = null;
+    if (sourceId == null || sourceId === targetItemId) return;
+    const queue = state.items
+      .filter(i => i.itemType === 'build-plan' && i.status === 'Outstanding')
+      .sort(compareQueueOrder);
+    const sourceIdx = queue.findIndex(i => i.id === sourceId);
+    const targetIdx = queue.findIndex(i => i.id === targetItemId);
+    if (sourceIdx === -1 || targetIdx === -1) return;
+    // "Drop above target" → final index of source in the new array is
+    // targetIdx; "drop below" → targetIdx + 1. If source < target, removing
+    // source shifts target down by 1 in the post-removal array, so the
+    // final index needs to compensate.
+    let finalIdx = dropAbove ? targetIdx : targetIdx + 1;
+    if (sourceIdx < targetIdx) finalIdx -= 1;
+    if (moveQueueOrderTo(sourceId, finalIdx)) {
+      flashSaveStatus('saving', 'Queue order updated — click Save to write to disk.');
+      render();
+    }
+  }
+
+  function handleQueueDragEnd(event) {
+    draggedQueueItemId = null;
+    clearQueueDragVisuals();
+  }
+
+  function hideQueueContextMenu() {
+    if (activeQueueContextMenu) {
+      activeQueueContextMenu.remove();
+      activeQueueContextMenu = null;
+    }
+    if (queueContextMenuDismiss) {
+      document.removeEventListener('mousedown', queueContextMenuDismiss, true);
+      document.removeEventListener('keydown', queueContextMenuDismiss, true);
+      window.removeEventListener('blur', queueContextMenuDismiss);
+      queueContextMenuDismiss = null;
+    }
+  }
+
+  function handleQueueContextMenu(event, itemId) {
+    // Don't hijack native right-click on form controls / links / buttons
+    // inside the card — users still need the browser's text-input menu.
+    const t = event.target;
+    if (t && t.closest && t.closest('input, textarea, button, a, select')) return;
+    event.preventDefault();
+    hideQueueContextMenu();
+    const item = state.items.find(i => i.id === itemId);
+    if (!item || item.itemType !== 'build-plan' || item.status !== 'Outstanding') return;
+    const queue = state.items
+      .filter(i => i.itemType === 'build-plan' && i.status === 'Outstanding')
+      .sort(compareQueueOrder);
+    const currentIdx = queue.findIndex(i => i.id === itemId);
+    if (currentIdx === -1) return;
+    const atTop = currentIdx <= 0;
+    const atBot = currentIdx >= queue.length - 1;
+
+    const menu = document.createElement('div');
+    menu.className = 'queue-context-menu';
+    menu.setAttribute('role', 'menu');
+    menu.style.left = event.clientX + 'px';
+    menu.style.top = event.clientY + 'px';
+    menu.innerHTML =
+      '<button type="button" class="menu-item" role="menuitem" data-action="top"' + (atTop ? ' disabled' : '') + '>Move to top of queue</button>' +
+      '<button type="button" class="menu-item" role="menuitem" data-action="bottom"' + (atBot ? ' disabled' : '') + '>Move to bottom of queue</button>' +
+      '<div class="menu-sep" role="separator"></div>' +
+      '<button type="button" class="menu-item" role="menuitem" data-action="up5"' + (atTop ? ' disabled' : '') + '>Move up 5 places</button>' +
+      '<button type="button" class="menu-item" role="menuitem" data-action="down5"' + (atBot ? ' disabled' : '') + '>Move down 5 places</button>';
+    menu.addEventListener('click', (e) => {
+      const btn = e.target.closest('.menu-item');
+      if (!btn || btn.disabled) return;
+      runQueueContextMenuAction(itemId, btn.dataset.action);
+    });
+    document.body.appendChild(menu);
+    activeQueueContextMenu = menu;
+
+    // Reposition if the menu spills off the viewport edges.
+    const mrect = menu.getBoundingClientRect();
+    if (mrect.right > window.innerWidth) {
+      menu.style.left = (window.innerWidth - mrect.width - 4) + 'px';
+    }
+    if (mrect.bottom > window.innerHeight) {
+      menu.style.top = (window.innerHeight - mrect.height - 4) + 'px';
+    }
+
+    // Click-outside / Escape / window-blur dismiss. Deferred to the next
+    // tick so the right-click that opened the menu doesn't immediately
+    // close it via a stray mousedown listener farther up the chain.
+    queueContextMenuDismiss = (e) => {
+      if (e.type === 'keydown' && e.key !== 'Escape') return;
+      if (e.type === 'mousedown' && menu.contains(e.target)) return;
+      hideQueueContextMenu();
+    };
+    setTimeout(() => {
+      if (!activeQueueContextMenu) return;
+      document.addEventListener('mousedown', queueContextMenuDismiss, true);
+      document.addEventListener('keydown', queueContextMenuDismiss, true);
+      window.addEventListener('blur', queueContextMenuDismiss);
+    }, 0);
+  }
+
+  function runQueueContextMenuAction(itemId, action) {
+    const queue = state.items
+      .filter(i => i.itemType === 'build-plan' && i.status === 'Outstanding')
+      .sort(compareQueueOrder);
+    const currentIdx = queue.findIndex(i => i.id === itemId);
+    hideQueueContextMenu();
+    if (currentIdx === -1) return;
+    let targetIdx = currentIdx;
+    if (action === 'top') targetIdx = 0;
+    else if (action === 'bottom') targetIdx = queue.length - 1;
+    else if (action === 'up5') targetIdx = currentIdx - 5;
+    else if (action === 'down5') targetIdx = currentIdx + 5;
+    else return;
+    if (moveQueueOrderTo(itemId, targetIdx)) {
+      flashSaveStatus('saving', 'Queue order updated — click Save to write to disk.');
+      render();
+    }
+  }
+  // === end K2-P6 ===
 
   function getEligible(arr, selectedRoles) {
     if (!selectedRoles || selectedRoles.length === 0) return arr;

@@ -536,8 +536,29 @@ For Kit Sprints (sprint-folder `reference/kit-sprints/K<n> - <Short Theme>/`):
      final prompt of the Kit Sprint's build plan appends a sync-log entry listing what
      changed + the publish commit SHA). The planner stays unchanged.
 
-  The Kit Sprint completion ritual is documented in `reference/kit-sprints/README.md`
-  § "Standard Kit Sprint completion ritual."
+  5. **Remind me of the K-sprint completion ritual ordering** (K2-P2 codification,
+     2026-05-27 — the K1-P7 publish ran with an uncommitted `TRACKER-SETUP.md` edit
+     on disk because the chore commit hadn't landed yet; K2-P2 made
+     `_publish-mirror.py` `--cached`-only so this is now impossible by construction,
+     and the explicit ordering below makes the rule operator-visible):
+
+     ```
+     1. Append STARTER-KIT-SYNC-LOG.md entry         (audit trail)
+     2. Chore commit lands on the feature branch    (commit BEFORE publish — K2-P2)
+     3. publish-kit-to-github.sh runs               (pushes committed content only)
+     4. Verify GitHub Pages rebuild (~1 min)        (live URL serves the new kit)
+     5. Sprint completion gates                     (build / test / lint per
+                                                     sprint-completion gate policy)
+     ```
+
+     Step 2's chore commit is the audit-anchor: every public-mirror state must
+     correspond to a committed Engage state. Pre-K2-P2 this was procedural; post-K2-P2
+     it's structural (`_publish-mirror.py` uses `git ls-files --cached` only — any
+     uncommitted edit will NOT publish).
+
+  The Kit Sprint completion ritual is also documented in
+  `reference/kit-sprints/README.md` § "Standard Kit Sprint completion ritual" in
+  narrative form — the ordering above is the canonical step sequence as of K2-P2.
 ```
 
 ---
